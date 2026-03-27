@@ -6,5 +6,5 @@ export async function generateContent(input: unknown): Promise<GenerateContentRe
   const parsedInput = GenerateContentInputSchema.parse(input) as GenerateContentInput;
   const provider = new OpenAIProvider();
   const result = await provider.generateContent(parsedInput);
-  return GenerateContentResultSchema.parse(result);
+  return GenerateContentResultSchema.parse(result) as GenerateContentResult;
 }

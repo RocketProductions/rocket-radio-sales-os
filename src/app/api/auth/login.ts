@@ -1,13 +1,12 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
+import { signToken } from "@/lib/auth";
 
-/**
- * Stub API endpoint for user login. This endpoint does not yet implement
- * authentication logic. It returns a 501 Not Implemented response by
- * default.
- */
-export async function POST(req: Request) {
-  return NextResponse.json(
-    { ok: false, error: "Login not implemented yet" },
-    { status: 501 }
-  );
+export async function POST() {
+  const token = await signToken({
+    sub: "demo-user",
+    email: "demo@example.com",
+    tenantId: "demo-tenant",
+    role: "admin",
+  });
+  return NextResponse.json({ token });
 }
