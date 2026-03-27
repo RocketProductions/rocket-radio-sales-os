@@ -1,10 +1,6 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { generateContent } from "@/ai/generateContent";
 
-/**
- * API route for generating content. It expects a POST body matching
- * GenerateContentInput and returns JSON with either the data or an error.
- */
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -12,9 +8,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, data: result });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json(
-      { ok: false, error: message },
-      { status: 400 }
-    );
+    const status = message.includes("environment variable") ? 500 : 400;
+    return NextResponse.json({ ok: false, error: message }, { status });
   }
 }

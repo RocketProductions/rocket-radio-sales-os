@@ -1,26 +1,49 @@
+﻿import OpenAI from "openai";
 import type { AIProvider } from "./index";
 import type { GenerateContentInput, GenerateContentResult } from "@/types/content";
 
-/**
- * OpenAIProvider is a stub implementation of AIProvider. Replace the
- * implementation with real API calls when adding provider support.
- */
+const SECTION_COUNTS: Record<string, number> = { short: 2, medium: 4, long: 6 };
+
+function buildSystemPrompt(): string {
+  return `You are an expert radio and local media sales strategist.
+You help account executives build compelling campaign proposals, creative briefs, and client presentations.
+Always respond with valid JSON in the exact shape requested. Do not add markdown fences or extra text.`;
+}
+
+function buildUserPrompt(input: GenerateContentInput): string {
+  const sectionCount = SECTION_COUNTS[input.options?.length ?? "medium"];
+  const toneNote = input.options?.tone ? `Tone: ${input.options.tone}.` : "";
+  const audienceNote = input.options?.audience ? `Target audience: ${input.options.audience}.` : "";
+  return `Generate a ${input.type} for the following objective:\n\n"${input.prompt}"\n\n${toneNote} ${audienceNote}\n\nRespond ONLY with a JSON object:\n{\n  "title": string,\n  "summary": string,\n  "sections": Array<{ "id": string, "title": string, "body": string }>\n}\n\nInclude exactly ${sectionCount} sections.`;
+}
+
 export class OpenAIProvider implements AIProvider {
-  async generateContent(
-    input: GenerateContentInput
-  ): Promise<GenerateContentResult> {
-    // TODO: Replace with actual OpenAI API call. This stub returns a
-    // deterministic response to validate the data flow.
-    return {
-      title: `Draft ${input.type}`,
-      summary: "This is a stub response. Replace with real AI output.",
-      sections: [
-        {
-          id: "section-1",
-          title: "Overview",
-          body: input.prompt,
-        },
+  private client: OpenAI;
+  private model: string;
+
+  constructor() {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) throw new Error("OPENAI_API_KEY environment variable is not set");
+    this.client = new OpenAI({ apiKey });
+    this.model = process.env.OPENAI_MODEL ?? "gpt-4o";
+  }
+
+  async generateContent(input: GenerateContentInput): Promise<GenerateContentResult> {
+    const completion = await this.client.chat.completions.create({
+      model: this.model,
+      temperature: 0.7,
+      max_tokens: 2048,
+      messages: [
+        { role: "system", content: buildSystemPrompt() },
+        { role: "user", content: buildUserPrompt(input) },
       ],
-    };
+    });
+    const raw = completion.choices[0]?.message?.content;
+    if (!raw) throw new Error("OpenAI returned an empty response");
+    try {
+      return JSON.parse(raw) as GenerateContentResult;
+    } catch {
+      throw new Error(`OpenAI response was not valid JSON: ${raw.slice(0, 200)}`);
+    }
   }
 }
