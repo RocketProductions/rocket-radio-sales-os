@@ -8,6 +8,8 @@ import {
   Users,
   Megaphone,
   UserCheck,
+  BarChart2,
+  FileText,
   Rocket,
 } from "lucide-react";
 
@@ -16,6 +18,8 @@ const navItems = [
   { href: "/dashboard/campaigns", label: "Campaigns", icon: Megaphone },
   { href: "/dashboard/clients", label: "Clients", icon: Users },
   { href: "/dashboard/leads", label: "Leads", icon: UserCheck },
+  { href: "/dashboard/reports", label: "Reports", icon: BarChart2 },
+  { href: "/dashboard/proposals", label: "Proposals", icon: FileText },
 ];
 
 export function Sidebar() {

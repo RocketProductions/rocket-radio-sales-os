@@ -1,4 +1,5 @@
-﻿import { describe, it, expect } from "vitest";
+﻿// @vitest-environment node
+import { describe, it, expect } from "vitest";
 import { hashPassword, verifyPassword, signToken, verifyToken } from "@/lib/auth";
 
 process.env.JWT_SECRET = "test-secret-for-unit-tests-minimum-length";

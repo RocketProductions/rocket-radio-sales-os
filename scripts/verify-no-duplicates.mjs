@@ -13,9 +13,14 @@ async function getFiles(dir) {
   return files.flat().filter((f) => /\.(ts|tsx)$/.test(f));
 }
 
+// Next.js route segment config exports that are expected to appear in multiple page files
+const NEXTJS_ROUTE_CONFIGS = new Set(["dynamic", "revalidate", "runtime", "preferredRegion", "maxDuration", "fetchCache", "dynamicParams", "generateStaticParams"]);
+
 async function getExports(file) {
   const content = await readFile(file, "utf8");
-  return [...content.matchAll(/^export\s+(?:function|class|const|type|interface|enum)\s+(\w+)/gm)].map((m) => m[1]);
+  return [...content.matchAll(/^export\s+(?:function|class|const|type|interface|enum)\s+(\w+)/gm)]
+    .map((m) => m[1])
+    .filter((name) => !NEXTJS_ROUTE_CONFIGS.has(name));
 }
 
 async function main() {

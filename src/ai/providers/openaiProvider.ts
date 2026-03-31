@@ -1,4 +1,4 @@
-﻿import OpenAI from "openai";
+import OpenAI from "openai";
 import type { AIProvider } from "./index";
 import type { GenerateContentInput, GenerateContentResult } from "@/types/content";
 
@@ -15,6 +15,11 @@ function buildUserPrompt(input: GenerateContentInput): string {
   const toneNote = input.options?.tone ? `Tone: ${input.options.tone}.` : "";
   const audienceNote = input.options?.audience ? `Target audience: ${input.options.audience}.` : "";
   return `Generate a ${input.type} for the following objective:\n\n"${input.prompt}"\n\n${toneNote} ${audienceNote}\n\nRespond ONLY with a JSON object:\n{\n  "title": string,\n  "summary": string,\n  "sections": Array<{ "id": string, "title": string, "body": string }>\n}\n\nInclude exactly ${sectionCount} sections.`;
+}
+
+export interface ChatRequest {
+  systemPrompt: string;
+  userPrompt: string;
 }
 
 export class OpenAIProvider implements AIProvider {
@@ -45,5 +50,21 @@ export class OpenAIProvider implements AIProvider {
     } catch {
       throw new Error(`OpenAI response was not valid JSON: ${raw.slice(0, 200)}`);
     }
+  }
+
+  /** Call OpenAI with a mode-specific system + user prompt, return raw JSON string */
+  async chat(request: ChatRequest): Promise<string> {
+    const completion = await this.client.chat.completions.create({
+      model: this.model,
+      temperature: 0.7,
+      max_tokens: 3000,
+      messages: [
+        { role: "system", content: request.systemPrompt },
+        { role: "user", content: request.userPrompt },
+      ],
+    });
+    const raw = completion.choices[0]?.message?.content ?? "";
+    // Strip markdown code fences if the model wraps output in ```json ... ```
+    return raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
   }
 }
