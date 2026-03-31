@@ -1,65 +1,76 @@
 /**
- * db.ts — User store backed by Prisma/Supabase.
- * Replaces the original in-memory Map.
+ * db.ts — User store backed by Supabase JS client (REST API).
+ * Uses service role key — bypasses RLS, server-only.
  */
 
 import type { User } from "@/types/content";
 
-export async function findUserByEmail(email: string): Promise<User | undefined> {
-  const { prisma } = await import("@/lib/prisma");
-  const user = await prisma.appUser.findFirst({
-    where: { email: { equals: email, mode: "insensitive" } },
-  });
-  if (!user) return undefined;
+type DbUser = {
+  id: string;
+  email: string;
+  name: string;
+  tenant_id: string | null;
+  role: string;
+  password_hash: string | null;
+  created_at: string;
+};
+
+function toUser(row: DbUser): User {
   return {
-    id: user.id,
-    email: user.email,
-    name: user.name,
-    tenantId: user.tenantId ?? "",
-    role: (user.role as User["role"]) ?? "client",
-    passwordHash: user.passwordHash ?? "",
-    createdAt: user.createdAt.toISOString(),
+    id: row.id,
+    email: row.email,
+    name: row.name,
+    tenantId: row.tenant_id ?? "",
+    role: (row.role as User["role"]) ?? "client",
+    passwordHash: row.password_hash ?? "",
+    createdAt: row.created_at,
   };
+}
+
+export async function findUserByEmail(email: string): Promise<User | undefined> {
+  const { getSupabaseAdmin } = await import("@/lib/supabase-admin");
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase
+    .from("app_users")
+    .select("*")
+    .ilike("email", email)
+    .maybeSingle();
+  if (error || !data) return undefined;
+  return toUser(data as DbUser);
 }
 
 export async function findUserById(id: string): Promise<User | undefined> {
-  const { prisma } = await import("@/lib/prisma");
-  const user = await prisma.appUser.findUnique({ where: { id } });
-  if (!user) return undefined;
-  return {
-    id: user.id,
-    email: user.email,
-    name: user.name,
-    tenantId: user.tenantId ?? "",
-    role: (user.role as User["role"]) ?? "client",
-    passwordHash: user.passwordHash ?? "",
-    createdAt: user.createdAt.toISOString(),
-  };
+  const { getSupabaseAdmin } = await import("@/lib/supabase-admin");
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase
+    .from("app_users")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (error || !data) return undefined;
+  return toUser(data as DbUser);
 }
 
 export async function createUser(user: User): Promise<User> {
-  const { prisma } = await import("@/lib/prisma");
+  const { getSupabaseAdmin } = await import("@/lib/supabase-admin");
+  const supabase = getSupabaseAdmin();
+
   const existing = await findUserByEmail(user.email);
   if (existing) throw new Error("A user with this email already exists");
 
-  const created = await prisma.appUser.create({
-    data: {
+  const { data, error } = await supabase
+    .from("app_users")
+    .insert({
       id: user.id,
       email: user.email,
       name: user.name,
-      tenantId: user.tenantId || null,
+      tenant_id: user.tenantId || null,
       role: user.role,
-      passwordHash: user.passwordHash,
-    },
-  });
+      password_hash: user.passwordHash,
+    })
+    .select()
+    .single();
 
-  return {
-    id: created.id,
-    email: created.email,
-    name: created.name,
-    tenantId: created.tenantId ?? "",
-    role: (created.role as User["role"]) ?? "client",
-    passwordHash: created.passwordHash ?? "",
-    createdAt: created.createdAt.toISOString(),
-  };
+  if (error || !data) throw new Error(error?.message ?? "Failed to create user");
+  return toUser(data as DbUser);
 }
