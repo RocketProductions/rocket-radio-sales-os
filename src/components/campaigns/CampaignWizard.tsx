@@ -14,7 +14,7 @@ import { AssetToolbar } from "@/components/campaigns/AssetToolbar";
 import { useAsset } from "@/hooks/useAsset";
 import {
   Loader2, Sparkles, CheckCircle2, Radio, FileText,
-  MessageSquare, Globe, AlertCircle,
+  MessageSquare, Globe, AlertCircle, Send, ExternalLink, Copy, Check,
 } from "lucide-react";
 import type { BrandKit } from "@/ai/modes/brandAnalysis";
 import { formatBrandContext } from "@/ai/modes/brandAnalysis";
@@ -118,11 +118,29 @@ export function CampaignWizard() {
   const funnelAsset   = useAsset<FunnelCopyResult>("funnel-copy", sessionId);
   const followUpAsset = useAsset<FollowUpResult>("follow-up-sequence", sessionId);
 
+  // Phase C — client review
+  const [reviewUrl, setReviewUrl]       = useState("");
+  const [repMessage, setRepMessage]     = useState("");
+  const [sendingReview, setSendingReview] = useState(false);
+  const [reviewError, setReviewError]   = useState("");
+  const [copied, setCopied]             = useState(false);
+
+  // Phase D — publish landing page
+  const [slug, setSlug]             = useState("");
+  const [publishing, setPublishing] = useState(false);
+  const [publishError, setPublishError] = useState("");
+  const [liveUrl, setLiveUrl]       = useState("");
+
   // The live brief (from briefAsset.data or editedContent)
   const brief = briefAsset.data;
 
   function update(field: keyof IntakeForm, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
+    // Auto-generate slug when business name changes
+    if (field === "businessName") {
+      const auto = value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      setSlug(auto);
+    }
   }
 
   // ── Brand kit scan ────────────────────────────────────────────────────────
@@ -235,8 +253,77 @@ export function CampaignWizard() {
     });
   }
 
+  // ── Send for Review ──────────────────────────────────────────────────────
+  async function handleSendForReview() {
+    const approvedIds = [briefAsset, scriptAsset, funnelAsset, followUpAsset]
+      .filter((a) => a.dbId && (a.status === "saved" || a.status === "edited" || a.status === "approved"))
+      .map((a) => a.dbId as string);
+    if (approvedIds.length === 0) return;
+    setSendingReview(true);
+    setReviewError("");
+    try {
+      const res = await fetch("/api/review/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId,
+          assetIds: approvedIds,
+          businessName: form.businessName || undefined,
+          repMessage: repMessage.trim() || undefined,
+        }),
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error);
+      setReviewUrl(json.reviewUrl);
+    } catch (err) {
+      setReviewError(err instanceof Error ? err.message : "Failed to create review link");
+    } finally {
+      setSendingReview(false);
+    }
+  }
+
+  function copyReviewUrl() {
+    navigator.clipboard.writeText(reviewUrl).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  // ── Publish Landing Page ──────────────────────────────────────────────────
+  async function handlePublish() {
+    if (!funnelAsset.dbId || !slug) return;
+    setPublishing(true);
+    setPublishError("");
+    try {
+      const res = await fetch("/api/lp/publish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId,
+          assetId: funnelAsset.dbId,
+          brandKitId: brandKitId ?? undefined,
+          slug,
+          businessName: form.businessName || undefined,
+        }),
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error);
+      setLiveUrl(json.liveUrl);
+    } catch (err) {
+      setPublishError(err instanceof Error ? err.message : "Publish failed");
+    } finally {
+      setPublishing(false);
+    }
+  }
+
   const canGenerate = !!form.businessName && !!form.industry;
   const isBusy = generatingKey !== null;
+
+  // Any asset is saved/edited/approved
+  const hasAnyAsset = [briefAsset, scriptAsset, funnelAsset, followUpAsset].some(
+    (a) => a.dbId !== null
+  );
+  const canPublish = funnelAsset.dbId !== null && slug.length >= 2;
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -471,6 +558,151 @@ export function CampaignWizard() {
       {scriptAsset.data   && <EditableScript   asset={scriptAsset} />}
       {funnelAsset.data   && <EditableFunnel   asset={funnelAsset} />}
       {followUpAsset.data && <EditableFollowUp asset={followUpAsset} />}
+
+      {/* ── Phase C: Send for Client Review ── */}
+      {hasAnyAsset && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Send className="h-5 w-5 text-rocket-blue" />
+              <CardTitle className="text-lg">Send for Client Review</CardTitle>
+            </div>
+            <CardDescription>
+              Send a shareable link to your client. They can review all assets, leave notes, and approve — no login required.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {reviewUrl ? (
+              <div className="space-y-3">
+                <p className="text-sm text-rocket-success font-medium flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 shrink-0" />
+                  Review link created. Share it with your client.
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    readOnly
+                    value={reviewUrl}
+                    className="flex-1 rounded-md border border-rocket-border bg-rocket-bg px-3 py-2 text-sm font-mono text-rocket-muted"
+                  />
+                  <Button variant="outline" size="sm" onClick={copyReviewUrl} className="shrink-0">
+                    {copied ? <><Check className="mr-1.5 h-4 w-4 text-rocket-success" />Copied!</> : <><Copy className="mr-1.5 h-4 w-4" />Copy</>}
+                  </Button>
+                  <a
+                    href={reviewUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="shrink-0 inline-flex items-center rounded-md border border-rocket-border bg-white px-3 py-1.5 text-sm font-medium text-rocket-dark hover:bg-rocket-bg transition-colors"
+                  >
+                    <ExternalLink className="mr-1.5 h-4 w-4" />Open
+                  </a>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div>
+                  <label className="mb-1 block text-sm font-medium">Message to client <span className="text-rocket-muted font-normal">(optional)</span></label>
+                  <textarea
+                    value={repMessage}
+                    onChange={(e) => setRepMessage(e.target.value)}
+                    placeholder="e.g. Here's your campaign draft — take a look and let me know if you'd like any changes to the script or headline."
+                    className="w-full rounded-md border border-rocket-border bg-rocket-bg px-3 py-2 text-sm resize-none min-h-[72px] focus:outline-none focus:ring-2 focus:ring-rocket-accent/40"
+                  />
+                </div>
+                {reviewError && (
+                  <p className="flex items-center gap-1.5 text-xs text-rocket-danger">
+                    <AlertCircle className="h-3.5 w-3.5 shrink-0" />{reviewError}
+                  </p>
+                )}
+                <Button onClick={handleSendForReview} disabled={sendingReview}>
+                  {sendingReview ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating link...</>
+                  ) : (
+                    <><Send className="mr-2 h-4 w-4" />Create Review Link</>
+                  )}
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── Phase D: Publish Landing Page ── */}
+      {funnelAsset.data && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Globe className="h-5 w-5 text-rocket-success" />
+              <CardTitle className="text-lg">Publish Landing Page</CardTitle>
+            </div>
+            <CardDescription>
+              Publish the landing page live. Leads captured go straight into the system.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {liveUrl ? (
+              <div className="space-y-3">
+                <p className="text-sm text-rocket-success font-medium flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 shrink-0" />
+                  Landing page is live!
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    readOnly
+                    value={liveUrl}
+                    className="flex-1 rounded-md border border-rocket-border bg-rocket-bg px-3 py-2 text-sm font-mono text-rocket-muted"
+                  />
+                  <a
+                    href={liveUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="shrink-0 inline-flex items-center rounded-md border border-rocket-border bg-white px-3 py-1.5 text-sm font-medium text-rocket-dark hover:bg-rocket-bg transition-colors"
+                  >
+                    <ExternalLink className="mr-1.5 h-4 w-4" />View Page
+                  </a>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div>
+                  <label className="mb-1 block text-sm font-medium">
+                    Page URL
+                    <span className="ml-2 text-xs font-normal text-rocket-muted">rocketradiosales.com/lp/</span>
+                  </label>
+                  <div className="flex gap-2 items-center">
+                    <span className="text-sm text-rocket-muted shrink-0">…/lp/</span>
+                    <Input
+                      value={slug}
+                      onChange={(e) => {
+                        const clean = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "");
+                        setSlug(clean);
+                      }}
+                      placeholder="johnson-roofing"
+                      className="flex-1"
+                    />
+                  </div>
+                  <p className="mt-1 text-xs text-rocket-muted">Lowercase letters, numbers, and hyphens only.</p>
+                </div>
+                {publishError && (
+                  <p className="flex items-center gap-1.5 text-xs text-rocket-danger">
+                    <AlertCircle className="h-3.5 w-3.5 shrink-0" />{publishError}
+                  </p>
+                )}
+                <Button
+                  onClick={handlePublish}
+                  disabled={publishing || !canPublish}
+                  className="bg-rocket-success hover:bg-rocket-success/90 text-white"
+                >
+                  {publishing ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Publishing...</>
+                  ) : (
+                    <><Globe className="mr-2 h-4 w-4" />Publish Now</>
+                  )}
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
