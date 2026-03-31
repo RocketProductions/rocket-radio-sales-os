@@ -24,6 +24,11 @@ const PUBLIC_ROUTES = [
   "/api/onboarding",
   "/api/billing/webhook",
   "/api/webhooks/meta-leads",
+  // Public client-facing routes — no login required
+  "/review",       // /review/[token] — client approval pages
+  "/lp",           // /lp/[slug]      — live landing pages
+  "/api/review",   // review session API (create + respond)
+  "/api/lp",       // landing page publish + lead capture
 ];
 
 // Routes that require rep/admin/super_admin role
