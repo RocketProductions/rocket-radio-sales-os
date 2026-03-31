@@ -1,12 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Sparkles, CheckCircle2, Radio, FileText, MessageSquare } from "lucide-react";
+import { BrandKitCard } from "@/components/campaigns/BrandKitCard";
+import {
+  Loader2, Sparkles, CheckCircle2, Radio, FileText,
+  MessageSquare, Globe, AlertCircle,
+} from "lucide-react";
+import type { BrandKit } from "@/ai/modes/brandAnalysis";
+import { formatBrandContext } from "@/ai/modes/brandAnalysis";
 
 interface IntakeForm {
   businessName: string;
@@ -83,6 +89,13 @@ export function CampaignWizard() {
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState("");
 
+  // Brand kit state
+  const [brandKit, setBrandKit] = useState<BrandKit | null>(null);
+  const [brandKitLoading, setBrandKitLoading] = useState(false);
+  const [brandKitError, setBrandKitError] = useState("");
+  const [scrapedTitle, setScrapedTitle] = useState("");
+
+  // Campaign outputs
   const [brief, setBrief] = useState<IntakeResult | null>(null);
   const [script, setScript] = useState<RadioScriptResult | null>(null);
   const [funnel, setFunnel] = useState<FunnelCopyResult | null>(null);
@@ -91,6 +104,34 @@ export function CampaignWizard() {
   function update(field: keyof IntakeForm, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
+
+  /** Scrape the website and extract brand kit */
+  const scanWebsite = useCallback(async () => {
+    const url = form.website.trim();
+    if (!url) return;
+    setBrandKitLoading(true);
+    setBrandKitError("");
+    setBrandKit(null);
+    try {
+      const res = await fetch("/api/brand/scrape", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error ?? "Brand scan failed");
+      setBrandKit(json.kit as BrandKit);
+      setScrapedTitle(json.scrapedTitle ?? "");
+      // Auto-fill industry if blank
+      if (!form.industry && json.kit?.industry) {
+        setForm((prev) => ({ ...prev, industry: json.kit.industry }));
+      }
+    } catch (err) {
+      setBrandKitError(err instanceof Error ? err.message : "Could not scan website");
+    } finally {
+      setBrandKitLoading(false);
+    }
+  }, [form.website, form.industry]);
 
   async function run<T>(
     key: string,
@@ -101,7 +142,11 @@ export function CampaignWizard() {
     setLoading(key);
     setError("");
     try {
-      const result = await generate<T>(mode, input);
+      // Inject brand context into every generation
+      const enrichedInput = brandKit
+        ? { ...input, brandContext: formatBrandContext(brandKit) }
+        : input;
+      const result = await generate<T>(mode, enrichedInput);
       onSuccess(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
@@ -128,8 +173,6 @@ export function CampaignWizard() {
       industry: form.industry,
       offer: brief?.offerDefinition.offer ?? form.offer,
       targetAudience: (brief?.targetAudience.primary ?? form.targetAudience) || undefined,
-      cta: undefined,
-      tone: undefined,
     }, setScript);
   }
 
@@ -159,23 +202,70 @@ export function CampaignWizard() {
         <CardHeader>
           <CardTitle>Client Intake</CardTitle>
           <CardDescription>
-            Enter the business details. AI will generate the offer, big idea, and campaign strategy.
+            Enter business details. Enter their website to auto-detect brand voice, colors, and key messaging.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <div>
               <label className="mb-1 block text-sm font-medium">Business Name *</label>
-              <Input value={form.businessName} onChange={(e) => update("businessName", e.target.value)} placeholder="e.g. Johnson Roofing" />
+              <Input
+                value={form.businessName}
+                onChange={(e) => update("businessName", e.target.value)}
+                placeholder="e.g. Johnson Roofing"
+              />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium">Industry *</label>
-              <Input value={form.industry} onChange={(e) => update("industry", e.target.value)} placeholder="e.g. Home Services / Roofing" />
+              <Input
+                value={form.industry}
+                onChange={(e) => update("industry", e.target.value)}
+                placeholder="e.g. Home Services / Roofing"
+              />
             </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">Website</label>
-              <Input value={form.website} onChange={(e) => update("website", e.target.value)} placeholder="e.g. johnsonroofing.com" />
+
+            {/* Website field with Scan button */}
+            <div className="md:col-span-2">
+              <label className="mb-1 block text-sm font-medium">
+                Website
+                <span className="ml-2 text-xs font-normal text-rocket-muted">
+                  — enter URL to auto-detect brand kit
+                </span>
+              </label>
+              <div className="flex gap-2">
+                <Input
+                  value={form.website}
+                  onChange={(e) => {
+                    update("website", e.target.value);
+                    setBrandKit(null);
+                    setBrandKitError("");
+                  }}
+                  onKeyDown={(e) => { if (e.key === "Enter") scanWebsite(); }}
+                  placeholder="e.g. johnsonroofing.com"
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={scanWebsite}
+                  disabled={!form.website.trim() || brandKitLoading}
+                  className="shrink-0"
+                >
+                  {brandKitLoading ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Scanning...</>
+                  ) : (
+                    <><Globe className="mr-2 h-4 w-4" />Scan Website</>
+                  )}
+                </Button>
+              </div>
+              {brandKitError && (
+                <p className="mt-1.5 flex items-center gap-1.5 text-xs text-rocket-danger">
+                  <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                  {brandKitError}
+                </p>
+              )}
             </div>
+
             <div>
               <label className="mb-1 block text-sm font-medium">Primary Goal</label>
               <Select value={form.primaryGoal} onChange={(e) => update("primaryGoal", e.target.value)}>
@@ -187,25 +277,54 @@ export function CampaignWizard() {
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium">Target Audience</label>
-              <Input value={form.targetAudience} onChange={(e) => update("targetAudience", e.target.value)} placeholder="e.g. Homeowners 35-65" />
+              <Input
+                value={form.targetAudience}
+                onChange={(e) => update("targetAudience", e.target.value)}
+                placeholder="e.g. Homeowners 35-65"
+              />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium">Current Offer</label>
-              <Input value={form.offer} onChange={(e) => update("offer", e.target.value)} placeholder="e.g. Free roof inspection" />
+              <Input
+                value={form.offer}
+                onChange={(e) => update("offer", e.target.value)}
+                placeholder="e.g. Free roof inspection"
+              />
             </div>
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium">Seasonality</label>
-            <Input value={form.seasonality} onChange={(e) => update("seasonality", e.target.value)} placeholder="e.g. Spring storm season" />
+            <div>
+              <label className="mb-1 block text-sm font-medium">Seasonality</label>
+              <Input
+                value={form.seasonality}
+                onChange={(e) => update("seasonality", e.target.value)}
+                placeholder="e.g. Spring storm season"
+              />
+            </div>
           </div>
 
           {error && <p className="text-sm text-rocket-danger">{error}</p>}
 
-          <Button onClick={handleBrief} disabled={loading !== null || !canGenerate} className="w-full md:w-auto">
-            {loading === "brief" ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Generating Brief...</> : <><Sparkles className="mr-2 h-4 w-4" />Generate Campaign Brief</>}
+          <Button
+            onClick={handleBrief}
+            disabled={loading !== null || !canGenerate}
+            className="w-full md:w-auto"
+          >
+            {loading === "brief" ? (
+              <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Generating Brief...</>
+            ) : (
+              <><Sparkles className="mr-2 h-4 w-4" />Generate Campaign Brief</>
+            )}
           </Button>
         </CardContent>
       </Card>
+
+      {/* Brand Kit Card — appears after scan */}
+      {brandKit && (
+        <BrandKitCard
+          kit={brandKit}
+          websiteUrl={form.website}
+          scrapedTitle={scrapedTitle}
+        />
+      )}
 
       {/* Brief Results */}
       {brief && (
@@ -234,7 +353,9 @@ export function CampaignWizard() {
                   </Badge>
                 </div>
                 {brief.offerDefinition.improvement && (
-                  <p className="text-sm text-rocket-muted"><strong>Tip:</strong> {brief.offerDefinition.improvement}</p>
+                  <p className="text-sm text-rocket-muted">
+                    <strong>Tip:</strong> {brief.offerDefinition.improvement}
+                  </p>
                 )}
               </CardContent>
             </Card>
@@ -243,30 +364,46 @@ export function CampaignWizard() {
               <CardContent className="space-y-1">
                 <p className="font-medium">{brief.targetAudience.primary}</p>
                 <p className="text-sm text-rocket-muted">{brief.targetAudience.whyTheyRespond}</p>
-                <Badge variant="default" className="mt-2 text-xs">{brief.campaignType.replace(/_/g, " ")}</Badge>
+                <Badge variant="default" className="mt-2 text-xs">
+                  {brief.campaignType.replace(/_/g, " ")}
+                </Badge>
               </CardContent>
             </Card>
           </div>
 
-          {/* Generate Next Steps — always visible once brief is done */}
+          {/* Generate Next Steps */}
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-5 w-5 text-rocket-success" />
                 <CardTitle className="text-lg">Generate Campaign Assets</CardTitle>
               </div>
-              <CardDescription>Brief is done. Generate the remaining assets below.</CardDescription>
+              <CardDescription>
+                Brief complete{brandKit ? " · Brand kit active — AI will match their voice" : ""}. Generate assets below.
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-3">
                 <Button onClick={handleScript} disabled={loading !== null} variant="outline">
-                  {loading === "script" ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Writing Script...</> : <><Radio className="mr-2 h-4 w-4" />Radio Script</>}
+                  {loading === "script" ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Writing Script...</>
+                  ) : (
+                    <><Radio className="mr-2 h-4 w-4" />Radio Script</>
+                  )}
                 </Button>
                 <Button onClick={handleFunnel} disabled={loading !== null} variant="outline">
-                  {loading === "funnel" ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Writing Page...</> : <><FileText className="mr-2 h-4 w-4" />Landing Page</>}
+                  {loading === "funnel" ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Writing Page...</>
+                  ) : (
+                    <><FileText className="mr-2 h-4 w-4" />Landing Page</>
+                  )}
                 </Button>
                 <Button onClick={handleFollowUp} disabled={loading !== null} variant="outline">
-                  {loading === "followup" ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Writing Sequence...</> : <><MessageSquare className="mr-2 h-4 w-4" />Follow-Up Texts</>}
+                  {loading === "followup" ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Writing Sequence...</>
+                  ) : (
+                    <><MessageSquare className="mr-2 h-4 w-4" />Follow-Up Texts</>
+                  )}
                 </Button>
               </div>
             </CardContent>
@@ -299,7 +436,9 @@ export function CampaignWizard() {
               </div>
             </div>
             {script.directionNotes && (
-              <p className="text-xs text-rocket-muted border-t pt-3"><strong>Direction:</strong> {script.directionNotes}</p>
+              <p className="text-xs text-rocket-muted border-t pt-3">
+                <strong>Direction:</strong> {script.directionNotes}
+              </p>
             )}
           </CardContent>
         </Card>
@@ -376,13 +515,17 @@ export function CampaignWizard() {
                   <Badge variant="outline">{msg.timing}</Badge>
                   <Badge variant={msg.channel === "text" ? "success" : "warning"}>{msg.channel}</Badge>
                 </div>
-                {msg.subject && <p className="text-xs font-semibold text-rocket-muted">Subject: {msg.subject}</p>}
+                {msg.subject && (
+                  <p className="text-xs font-semibold text-rocket-muted">Subject: {msg.subject}</p>
+                )}
                 <p className="text-sm whitespace-pre-wrap">{msg.body}</p>
                 <p className="text-xs text-rocket-muted italic">Angle: {msg.angle}</p>
               </div>
             ))}
             {followUp.toneNotes && (
-              <p className="text-xs text-rocket-muted border-t pt-3"><strong>Tone notes:</strong> {followUp.toneNotes}</p>
+              <p className="text-xs text-rocket-muted border-t pt-3">
+                <strong>Tone notes:</strong> {followUp.toneNotes}
+              </p>
             )}
           </CardContent>
         </Card>

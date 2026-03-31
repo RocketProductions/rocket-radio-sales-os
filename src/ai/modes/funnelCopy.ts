@@ -6,6 +6,7 @@ export const FunnelCopyInputSchema = z.object({
   offer: z.string().min(1),
   targetAudience: z.string().optional(),
   trustPoints: z.array(z.string()).optional(),
+  brandContext: z.string().optional(), // injected from brand kit scrape
 });
 
 export type FunnelCopyInput = z.infer<typeof FunnelCopyInputSchema>;
@@ -32,6 +33,7 @@ export function buildFunnelUserPrompt(input: FunnelCopyInput): string {
     `Offer: ${input.offer}`,
     input.targetAudience ? `Audience: ${input.targetAudience}` : null,
     input.trustPoints?.length ? `Trust Points: ${input.trustPoints.join(", ")}` : null,
+    input.brandContext ? `\n${input.brandContext}` : null,
   ].filter(Boolean).join("\n");
 
   return `Write landing page copy for this local business:\n\n${parts}\n\nRespond ONLY with a JSON object:\n{\n  "headline": string (under 10 words, benefit-driven),\n  "subheadline": string,\n  "bodyCopy": string[] (2-3 short paragraphs),\n  "trustElements": string[] (3-4 credibility points),\n  "ctaText": string (specific button text, not "Submit"),\n  "formFields": Array<{ "name": string, "type": "text"|"email"|"phone"|"select"|"textarea", "required": boolean, "placeholder": string? }>\n}`;

@@ -8,6 +8,7 @@ export const ClientIntakeInputSchema = z.object({
   targetAudience: z.string().optional(),
   offer: z.string().optional(),
   seasonality: z.string().optional(),
+  brandContext: z.string().optional(), // injected from brand kit scrape
 });
 
 export type ClientIntakeInput = z.infer<typeof ClientIntakeInputSchema>;
@@ -37,6 +38,7 @@ export function buildIntakeUserPrompt(input: ClientIntakeInput): string {
     input.targetAudience ? `Target Audience: ${input.targetAudience}` : null,
     input.offer ? `Current Offer: ${input.offer}` : null,
     input.seasonality ? `Seasonality: ${input.seasonality}` : null,
+    input.brandContext ? `\n${input.brandContext}` : null,
   ].filter(Boolean).join("\n");
 
   return `Analyze this local business and create a campaign brief:\n\n${parts}\n\nRespond ONLY with a JSON object:\n{\n  "offerDefinition": { "offer": string, "score": number (1-10), "improvement": string | null },\n  "campaignType": "lead_generation" | "foot_traffic" | "authority_builder" | "hiring" | "event_promotion",\n  "bigIdea": string (one compelling sentence),\n  "targetAudience": { "primary": string, "whyTheyRespond": string }\n}`;
