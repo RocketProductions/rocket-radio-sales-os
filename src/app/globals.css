@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+@theme {
+  /* Rocket Radio Sales brand colors */
+  --color-rocket-blue: #1e40af;
+  --color-rocket-dark: #0f172a;
+  --color-rocket-accent: #f97316;
+  --color-rocket-success: #22c55e;
+  --color-rocket-danger: #ef4444;
+  --color-rocket-muted: #64748b;
+  --color-rocket-bg: #f8fafc;
+  --color-rocket-card: #ffffff;
+  --color-rocket-border: #e2e8f0;
+
+  /* Spacing */
+  --radius-lg: 0.75rem;
+  --radius-md: 0.5rem;
+  --radius-sm: 0.25rem;
+}
+
+/* Base styles */
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background-color: var(--color-rocket-bg);
+  color: var(--color-rocket-dark);
+}
