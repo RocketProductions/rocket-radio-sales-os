@@ -8,18 +8,26 @@
         "lint": "eslint .",
         "test": "vitest run",
         "typecheck": "tsc --noEmit",
-        "verify": "npm run lint && npm run typecheck && npm run test && node scripts/verify-no-duplicates.mjs"
+        "verify": "npm run lint && npm run typecheck && npm run test && node scripts/verify-no-duplicates.mjs",
+        "postinstall": "prisma generate"
     },
     "dependencies": {
+        "@prisma/client": "^6.19.2",
         "bcryptjs": "^2.4.3",
+        "class-variance-authority": "^0.7.1",
+        "clsx": "^2.1.1",
         "jose": "^5.9.6",
+        "lucide-react": "^0.474.0",
         "next": "^16.2.1",
         "openai": "^4.77.0",
         "react": "19.0.0",
         "react-dom": "19.0.0",
+        "tailwind-merge": "^3.5.0",
         "zod": "3.24.1"
     },
     "devDependencies": {
+        "@eslint/eslintrc": "^3.3.5",
+        "@tailwindcss/postcss": "^4.2.2",
         "@testing-library/jest-dom": "^6.6.3",
         "@testing-library/react": "^16.1.0",
         "@types/bcryptjs": "^2.4.6",
@@ -32,6 +40,10 @@
         "eslint-config-next": "15.0.0",
         "eslint-plugin-react": "^7.37.0",
         "eslint-plugin-react-hooks": "^5.0.0",
+        "jsdom": "^29.0.1",
+        "postcss": "^8.5.8",
+        "prisma": "^6.19.2",
+        "tailwindcss": "^4.2.2",
         "typescript": "^5.7.2",
         "vitest": "^2.1.8"
     }
