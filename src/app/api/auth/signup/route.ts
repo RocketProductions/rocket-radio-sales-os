@@ -22,7 +22,7 @@ export async function POST(req: Request) {
       passwordHash: await hashPassword(password),
       createdAt: new Date().toISOString(),
     };
-    const created = createUser(user);
+    const created = await createUser(user);
     const payload: AuthPayload = { sub: created.id, email: created.email, tenantId: created.tenantId, role: created.role };
     const token = await signToken(payload);
     return NextResponse.json({ ok: true, data: { token, user: { id: created.id, email: created.email, name: created.name, tenantId: created.tenantId, role: created.role } } }, { status: 201 });

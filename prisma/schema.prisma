@@ -42,14 +42,15 @@ model Tenant {
 }
 
 model AppUser {
-  id          String   @id @db.Uuid
-  tenantId    String?  @map("tenant_id") @db.Uuid
-  email       String
-  name        String   @default("")
-  role        String   @default("client_owner")
-  brandAccess String[] @default([]) @map("brand_access") @db.Uuid
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  id           String   @id @db.Uuid
+  tenantId     String?  @map("tenant_id") @db.Uuid
+  email        String
+  name         String   @default("")
+  role         String   @default("client_owner")
+  brandAccess  String[] @default([]) @map("brand_access") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
   isSuperAdmin Boolean? @default(false) @map("is_super_admin")
+  passwordHash String?  @map("password_hash")
 
   tenant Tenant? @relation(fields: [tenantId], references: [id])
   posts  Post[]
