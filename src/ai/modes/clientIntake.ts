@@ -16,7 +16,7 @@ export const ClientIntakeOutputSchema = z.object({
   offerDefinition: z.object({
     offer: z.string(),
     score: z.number().min(1).max(10),
-    improvement: z.string().optional(),
+    improvement: z.string().nullish(),
   }),
   campaignType: z.enum(["lead_generation", "foot_traffic", "authority_builder", "hiring", "event_promotion"]),
   bigIdea: z.string(),

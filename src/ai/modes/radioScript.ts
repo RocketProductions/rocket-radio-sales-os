@@ -17,7 +17,7 @@ export const RadioScriptOutputSchema = z.object({
   estimatedSeconds: z.number(),
   hook: z.string(),
   cta: z.string(),
-  directionNotes: z.string().optional(),
+  directionNotes: z.string().nullish(),
 });
 
 export type RadioScriptOutput = z.infer<typeof RadioScriptOutputSchema>;

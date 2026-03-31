@@ -20,7 +20,7 @@ export const FunnelCopyOutputSchema = z.object({
     name: z.string(),
     type: z.enum(["text", "email", "phone", "select", "textarea"]),
     required: z.boolean(),
-    placeholder: z.string().optional(),
+    placeholder: z.string().nullish(),
   })),
 });
 

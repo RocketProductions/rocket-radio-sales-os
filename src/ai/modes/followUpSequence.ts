@@ -14,7 +14,7 @@ const MessageSchema = z.object({
   step: z.number(),
   timing: z.string(),
   channel: z.enum(["text", "email"]),
-  subject: z.string().optional(),
+  subject: z.string().nullish(),
   body: z.string(),
   angle: z.string(),
 });
@@ -22,7 +22,7 @@ const MessageSchema = z.object({
 export const FollowUpSequenceOutputSchema = z.object({
   messages: z.array(MessageSchema).min(5).max(5),
   conversionGoal: z.string(),
-  toneNotes: z.string().optional(),
+  toneNotes: z.string().nullish(),
 });
 
 export type FollowUpSequenceOutput = z.infer<typeof FollowUpSequenceOutputSchema>;
