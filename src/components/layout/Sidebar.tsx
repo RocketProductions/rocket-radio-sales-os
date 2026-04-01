@@ -13,6 +13,8 @@ import {
   Shield,
   LogOut,
   Rocket,
+  FileImage,
+  Settings,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -22,6 +24,8 @@ const NAV_ITEMS = [
   { href: "/dashboard/leads", label: "Leads", icon: UserCheck },
   { href: "/dashboard/reports", label: "Reports", icon: BarChart2 },
   { href: "/dashboard/proposals", label: "Proposals", icon: FileText },
+  { href: "/dashboard/assets", label: "Assets", icon: FileImage },
+  { href: "/dashboard/settings/connections", label: "Settings", icon: Settings },
 ];
 
 const ADMIN_ITEMS = [
