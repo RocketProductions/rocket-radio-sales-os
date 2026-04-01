@@ -30,11 +30,6 @@ export function UploadDropZone({ onUploaded, sessionId, ownerType, compact }: Up
   const inputRef = useRef<HTMLInputElement>(null);
 
   function detectCategory(file: File): FileCategory {
-    // In compact mode there's no category selector — infer from file type
-    if (compact) {
-      if (file.type.startsWith("image/")) return "photo";
-      return "document";
-    }
     if (selectedCategory === "logo") return "logo";
     if (file.type.startsWith("image/")) return "photo";
     return "document";
@@ -100,10 +95,20 @@ export function UploadDropZone({ onUploaded, sessionId, ownerType, compact }: Up
     }
   }
 
-  // ── Compact mode: just a small upload button ──────────────────────────────
+  // ── Compact mode: category picker + upload button ────────────────────────
   if (compact) {
     return (
-      <>
+      <div className="flex items-center gap-1">
+        <select
+          value={selectedCategory}
+          onChange={(e) => setSelectedCategory(e.target.value as FileCategory)}
+          disabled={uploading}
+          className="h-7 rounded-md border border-rocket-border bg-white px-1.5 text-xs text-rocket-dark focus:outline-none focus:ring-1 focus:ring-rocket-blue disabled:opacity-50"
+        >
+          <option value="logo">Logo</option>
+          <option value="photo">Photo</option>
+          <option value="document">Doc</option>
+        </select>
         <Button
           variant="outline"
           size="sm"
@@ -124,7 +129,7 @@ export function UploadDropZone({ onUploaded, sessionId, ownerType, compact }: Up
           className="hidden"
           onChange={handleInputChange}
         />
-      </>
+      </div>
     );
   }
 
