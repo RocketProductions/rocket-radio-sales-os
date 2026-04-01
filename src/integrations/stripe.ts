@@ -12,9 +12,9 @@
  * Requires env:
  *   STRIPE_SECRET_KEY=sk_...
  *   STRIPE_WEBHOOK_SECRET=whsec_...
- *   STRIPE_STARTER_PRICE_ID=price_...
- *   STRIPE_GROWTH_PRICE_ID=price_...
- *   STRIPE_SCALE_PRICE_ID=price_...
+ *   STRIPE_PRICE_STARTER=price_...
+ *   STRIPE_PRICE_GROWTH=price_...
+ *   STRIPE_PRICE_SCALE=price_...
  */
 
 import { logIntegration } from "./registry";
@@ -32,7 +32,7 @@ export const TIER_CONFIGS: Record<BillingTier, TierConfig> = {
   starter: {
     name: "Starter",
     description: "Lead visibility + 1 campaign + instant response",
-    priceId: process.env.STRIPE_STARTER_PRICE_ID,
+    priceId: process.env.STRIPE_PRICE_STARTER,
     features: [
       "Lead dashboard (\"Your Leads\")",
       "Activity feed",
@@ -44,7 +44,7 @@ export const TIER_CONFIGS: Record<BillingTier, TierConfig> = {
   growth: {
     name: "Growth",
     description: "Full managed campaign service + follow-up sequences",
-    priceId: process.env.STRIPE_GROWTH_PRICE_ID,
+    priceId: process.env.STRIPE_PRICE_GROWTH,
     features: [
       "Everything in Starter",
       "Ongoing campaign management",
@@ -57,7 +57,7 @@ export const TIER_CONFIGS: Record<BillingTier, TierConfig> = {
   scale: {
     name: "Scale",
     description: "Multi-campaign testing + dedicated strategy + advanced reporting",
-    priceId: process.env.STRIPE_SCALE_PRICE_ID,
+    priceId: process.env.STRIPE_PRICE_SCALE,
     features: [
       "Everything in Growth",
       "Multiple campaigns running simultaneously",
