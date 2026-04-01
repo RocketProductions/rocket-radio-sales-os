@@ -30,6 +30,11 @@ export function UploadDropZone({ onUploaded, sessionId, ownerType, compact }: Up
   const inputRef = useRef<HTMLInputElement>(null);
 
   function detectCategory(file: File): FileCategory {
+    // In compact mode there's no category selector — infer from file type
+    if (compact) {
+      if (file.type.startsWith("image/")) return "photo";
+      return "document";
+    }
     if (selectedCategory === "logo") return "logo";
     if (file.type.startsWith("image/")) return "photo";
     return "document";
