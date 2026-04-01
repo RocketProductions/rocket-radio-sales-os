@@ -93,7 +93,6 @@ export default async function LandingPage({
                   src={colors.logoUrl}
                   alt={businessName}
                   className="h-9 w-auto object-contain"
-                  onError={() => {}}
                 />
               ) : (
                 <span className="text-xl font-bold text-white">{businessName}</span>
