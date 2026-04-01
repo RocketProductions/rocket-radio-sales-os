@@ -44,29 +44,33 @@ export async function resolveBranding(tenantId: string | null | undefined): Prom
   if (!tenantId) return DEFAULTS;
 
   try {
-    const { prisma } = await import("@/lib/prisma");
-    const tenant = await prisma.tenant.findUnique({
-      where: { id: tenantId },
-      select: {
-        wlBrandName: true,
-        wlLogoUrl: true,
-        wlPrimaryColor: true,
-        wlCustomDomain: true,
-        wlSupportEmail: true,
-        wlHideRocketBranding: true,
-      },
-    });
+    const { getSupabaseAdmin } = await import("@/lib/supabase-admin");
+    const supabase = getSupabaseAdmin();
+    const { data: tenant } = await supabase
+      .from("tenants")
+      .select("wl_brand_name, wl_logo_url, wl_primary_color, wl_custom_domain, wl_support_email, wl_hide_rocket_branding")
+      .eq("id", tenantId)
+      .single();
 
     if (!tenant) return DEFAULTS;
 
+    const t = tenant as {
+      wl_brand_name: string | null;
+      wl_logo_url: string | null;
+      wl_primary_color: string | null;
+      wl_custom_domain: string | null;
+      wl_support_email: string | null;
+      wl_hide_rocket_branding: boolean | null;
+    };
+
     return {
-      brandName: tenant.wlBrandName ?? DEFAULTS.brandName,
-      logoUrl: tenant.wlLogoUrl ?? null,
-      primaryColor: tenant.wlPrimaryColor ?? DEFAULTS.primaryColor,
+      brandName: t.wl_brand_name ?? DEFAULTS.brandName,
+      logoUrl: t.wl_logo_url ?? null,
+      primaryColor: t.wl_primary_color ?? DEFAULTS.primaryColor,
       accentColor: DEFAULTS.accentColor,
-      supportEmail: tenant.wlSupportEmail ?? DEFAULTS.supportEmail,
-      hideRocketBranding: tenant.wlHideRocketBranding ?? false,
-      customDomain: tenant.wlCustomDomain ?? null,
+      supportEmail: t.wl_support_email ?? DEFAULTS.supportEmail,
+      hideRocketBranding: t.wl_hide_rocket_branding ?? false,
+      customDomain: t.wl_custom_domain ?? null,
     };
   } catch {
     return DEFAULTS;

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { sendLeadNotification } from "@/lib/smsProviders";
+import { triggerAutoResponse } from "@/lib/automation/engine";
 
 const Schema = z.object({
   landingPageId: z.string().uuid(),
@@ -60,6 +61,10 @@ export async function POST(req: Request) {
         submittedAt:  new Date().toISOString(),
       }).catch((err) => console.error("[leads] Notification error:", err));
     }
+
+    // Fire auto-response (instant text + schedule follow-ups) — fire-and-forget
+    triggerAutoResponse((lead as { id: string }).id)
+      .catch((err) => console.error("[lp/leads] automation error:", err));
 
     return NextResponse.json({ ok: true, id: (lead as { id: string }).id });
   } catch (err) {

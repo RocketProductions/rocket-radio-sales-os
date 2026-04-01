@@ -4,7 +4,7 @@
  * Concrete actions the automation engine can take.
  * Each action:
  *   1. Calls the appropriate integration (email, SMS, calendar)
- *   2. Logs a LeadEvent so it shows up in the client's activity feed
+ *   2. Logs a lead_event so it shows up in the client's activity feed
  *
  * Providers used:
  *   - sendText → Twilio (src/integrations/sms.ts) — stub if no TWILIO_* env vars
@@ -12,7 +12,7 @@
  *   - createCalendarEvent → Google Calendar (src/integrations/calendar.ts) — stub if no credentials
  */
 
-import { prisma } from "@/lib/prisma";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { sendSmsViaTwilio } from "@/integrations/sms";
 import { sendEmailViaResend } from "@/integrations/email";
 import { createCalendarEventViaGoogle } from "@/integrations/calendar";
@@ -28,6 +28,7 @@ export async function sendText(
   phone: string,
   body: string,
 ): Promise<ActionResult> {
+  const supabase = getSupabaseAdmin();
   const result = await sendSmsViaTwilio({ to: phone, body, leadId });
 
   const modeNote = result.mode === "stub" ? " (dev mode)" : "";
@@ -35,18 +36,16 @@ export async function sendText(
     ? `We texted them instantly${modeNote}: "${body.slice(0, 80)}${body.length > 80 ? "..." : ""}"`
     : `Text failed: ${result.error}`;
 
-  await prisma.leadEvent.create({
-    data: {
-      leadId,
-      eventType: "auto_text",
-      message: statusMsg,
-      metadata: {
-        phone,
-        body,
-        channel: "sms",
-        mode: result.mode,
-        messageSid: result.messageSid,
-      },
+  await supabase.from("lead_events").insert({
+    lead_id: leadId,
+    event_type: "auto_text",
+    message: statusMsg,
+    metadata: {
+      phone,
+      body,
+      channel: "sms",
+      mode: result.mode,
+      messageSid: result.messageSid,
     },
   });
 
@@ -63,6 +62,7 @@ export async function sendEmail(
   subject: string,
   body: string,
 ): Promise<ActionResult> {
+  const supabase = getSupabaseAdmin();
   const result = await sendEmailViaResend({ to: email, subject, body, leadId });
 
   const modeNote = result.mode === "stub" ? " (dev mode)" : "";
@@ -70,19 +70,17 @@ export async function sendEmail(
     ? `We emailed them${modeNote}: "${subject}"`
     : `Email failed: ${result.error}`;
 
-  await prisma.leadEvent.create({
-    data: {
-      leadId,
-      eventType: "auto_email",
-      message: statusMsg,
-      metadata: {
-        email,
-        subject,
-        body,
-        channel: "email",
-        mode: result.mode,
-        messageId: result.messageId,
-      },
+  await supabase.from("lead_events").insert({
+    lead_id: leadId,
+    event_type: "auto_email",
+    message: statusMsg,
+    metadata: {
+      email,
+      subject,
+      body,
+      channel: "email",
+      mode: result.mode,
+      messageId: result.messageId,
     },
   });
 
@@ -99,6 +97,7 @@ export async function createCalendarEvent(
   dateTime: string,
   attendeeEmail?: string,
 ): Promise<ActionResult> {
+  const supabase = getSupabaseAdmin();
   const result = await createCalendarEventViaGoogle({
     title,
     startDateTime: dateTime,
@@ -111,19 +110,17 @@ export async function createCalendarEvent(
     ? `Appointment booked${modeNote}: ${title}`
     : `Booking failed: ${result.error}`;
 
-  await prisma.leadEvent.create({
-    data: {
-      leadId,
-      eventType: "booked",
-      message: statusMsg,
-      metadata: {
-        title,
-        dateTime,
-        attendeeEmail,
-        mode: result.mode,
-        eventId: result.eventId,
-        eventLink: result.eventLink,
-      },
+  await supabase.from("lead_events").insert({
+    lead_id: leadId,
+    event_type: "booked",
+    message: statusMsg,
+    metadata: {
+      title,
+      dateTime,
+      attendeeEmail,
+      mode: result.mode,
+      eventId: result.eventId,
+      eventLink: result.eventLink,
     },
   });
 

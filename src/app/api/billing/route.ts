@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createCheckoutSession, TIER_CONFIGS, type BillingTier } from "@/integrations/stripe";
-import { prisma } from "@/lib/prisma";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
 const CreateCheckoutSchema = z.object({
   tier: z.enum(["starter", "growth", "scale"]),
@@ -69,17 +69,20 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const subscription = await prisma.subscription.findUnique({
-      where: { tenantId },
-    });
+    const supabase = getSupabaseAdmin();
+    const { data: subscription } = await supabase
+      .from("subscriptions")
+      .select("plan, status, current_period_end, cancel_at_period_end")
+      .eq("tenant_id", tenantId)
+      .single();
 
     return NextResponse.json({
       subscription: subscription
         ? {
-            plan: subscription.plan,
-            status: subscription.status,
-            currentPeriodEnd: subscription.currentPeriodEnd,
-            cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+            plan: (subscription as { plan: string }).plan,
+            status: (subscription as { status: string }).status,
+            currentPeriodEnd: (subscription as { current_period_end: string | null }).current_period_end,
+            cancelAtPeriodEnd: (subscription as { cancel_at_period_end: boolean }).cancel_at_period_end,
           }
         : null,
       tiers: TIER_CONFIGS,

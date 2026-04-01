@@ -22,7 +22,7 @@ const ColorResultSchema = z.object({
   secondaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).nullable(),
   accentColor:    z.string().regex(/^#[0-9a-fA-F]{6}$/).nullable(),
   confidence:     z.enum(["high", "medium", "low"]),
-  notes:          z.string().optional(),
+  notes:          z.string().nullish(),
 });
 
 const SYSTEM_PROMPT = `You are a brand color analyst. Given a logo image, identify the dominant brand colors.

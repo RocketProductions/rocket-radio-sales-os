@@ -88,24 +88,23 @@ export async function logIntegration(params: {
   errorMessage?: string;
   durationMs?: number;
 }): Promise<void> {
-  // Only log if we have a DB connection — silently skip in dev/test
+  // Only log if we have a DB connection — silently skip if table doesn't exist yet
   try {
-    const { prisma } = await import("@/lib/prisma");
-    await prisma.integrationLog.create({
-      data: {
-        tenantId: params.tenantId ?? "00000000-0000-0000-0000-000000000000",
-        provider: params.provider,
-        action: params.action,
-        referenceId: params.referenceId,
-        referenceType: params.referenceType,
-        status: params.status,
-        request: params.request ? JSON.parse(JSON.stringify(params.request)) : undefined,
-        response: params.response ? JSON.parse(JSON.stringify(params.response)) : undefined,
-        errorMessage: params.errorMessage,
-        durationMs: params.durationMs,
-      },
+    const { getSupabaseAdmin } = await import("@/lib/supabase-admin");
+    const supabase = getSupabaseAdmin();
+    await supabase.from("integration_logs").insert({
+      tenant_id: params.tenantId ?? "00000000-0000-0000-0000-000000000000",
+      provider: params.provider,
+      action: params.action,
+      reference_id: params.referenceId,
+      reference_type: params.referenceType,
+      status: params.status,
+      request: params.request ? JSON.parse(JSON.stringify(params.request)) : null,
+      response: params.response ? JSON.parse(JSON.stringify(params.response)) : null,
+      error_message: params.errorMessage,
+      duration_ms: params.durationMs,
     });
   } catch {
-    // DB not available — skip logging
+    // DB not available or table doesn't exist — skip logging
   }
 }

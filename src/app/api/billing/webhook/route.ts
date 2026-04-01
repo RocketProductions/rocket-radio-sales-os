@@ -12,7 +12,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { verifyWebhookSignature } from "@/integrations/stripe";
 
 // Stripe sends raw body — disable Next.js body parsing
@@ -37,6 +37,8 @@ export async function POST(req: NextRequest) {
 
   console.log(`[stripe/webhook] Event: ${event.type}`);
 
+  const supabase = getSupabaseAdmin();
+
   try {
     switch (event.type) {
       case "checkout.session.completed": {
@@ -46,28 +48,38 @@ export async function POST(req: NextRequest) {
 
         if (!tenantId) break;
 
-        await prisma.subscription.upsert({
-          where: { tenantId },
-          create: {
-            tenantId,
+        // Upsert subscription record
+        const { data: existing } = await supabase
+          .from("subscriptions")
+          .select("id")
+          .eq("tenant_id", tenantId)
+          .single();
+
+        if (existing) {
+          await supabase
+            .from("subscriptions")
+            .update({
+              plan: tier,
+              status: "active",
+              stripe_customer_id: session.customer ?? null,
+              stripe_subscription_id: session.subscription ?? null,
+            })
+            .eq("tenant_id", tenantId);
+        } else {
+          await supabase.from("subscriptions").insert({
+            tenant_id: tenantId,
             plan: tier,
             status: "active",
-            stripeCustomerId: session.customer ?? undefined,
-            stripeSubscriptionId: session.subscription ?? undefined,
-          },
-          update: {
-            plan: tier,
-            status: "active",
-            stripeCustomerId: session.customer ?? undefined,
-            stripeSubscriptionId: session.subscription ?? undefined,
-          },
-        });
+            stripe_customer_id: session.customer ?? null,
+            stripe_subscription_id: session.subscription ?? null,
+          });
+        }
 
         // Update tenant plan tier
-        await prisma.tenant.update({
-          where: { id: tenantId },
-          data: { planTier: tier },
-        }).catch(() => undefined); // Silently skip if tenant not found
+        await supabase
+          .from("tenants")
+          .update({ plan_tier: tier })
+          .eq("id", tenantId);
 
         console.log(`[stripe/webhook] Subscription activated: tenant=${tenantId} tier=${tier}`);
         break;
@@ -75,52 +87,45 @@ export async function POST(req: NextRequest) {
 
       case "customer.subscription.updated": {
         const sub = event.data.object as StripeSubscription;
-        const existing = await prisma.subscription.findFirst({
-          where: { stripeSubscriptionId: sub.id },
-        });
+
+        const { data: existing } = await supabase
+          .from("subscriptions")
+          .select("id")
+          .eq("stripe_subscription_id", sub.id)
+          .single();
 
         if (existing) {
-          await prisma.subscription.update({
-            where: { id: existing.id },
-            data: {
+          await supabase
+            .from("subscriptions")
+            .update({
               status: sub.status,
-              currentPeriodEnd: sub.current_period_end
-                ? new Date(sub.current_period_end * 1000)
-                : undefined,
-              cancelAtPeriodEnd: sub.cancel_at_period_end ?? false,
-            },
-          });
+              current_period_end: sub.current_period_end
+                ? new Date(sub.current_period_end * 1000).toISOString()
+                : null,
+              cancel_at_period_end: sub.cancel_at_period_end ?? false,
+            })
+            .eq("stripe_subscription_id", sub.id);
         }
         break;
       }
 
       case "customer.subscription.deleted": {
         const sub = event.data.object as StripeSubscription;
-        const existing = await prisma.subscription.findFirst({
-          where: { stripeSubscriptionId: sub.id },
-        });
 
-        if (existing) {
-          await prisma.subscription.update({
-            where: { id: existing.id },
-            data: { status: "cancelled", cancelAtPeriodEnd: false },
-          });
-        }
+        await supabase
+          .from("subscriptions")
+          .update({ status: "cancelled", cancel_at_period_end: false })
+          .eq("stripe_subscription_id", sub.id);
         break;
       }
 
       case "invoice.payment_failed": {
         const invoice = event.data.object as StripeInvoice;
         if (invoice.subscription) {
-          const existing = await prisma.subscription.findFirst({
-            where: { stripeSubscriptionId: invoice.subscription },
-          });
-          if (existing) {
-            await prisma.subscription.update({
-              where: { id: existing.id },
-              data: { status: "past_due" },
-            });
-          }
+          await supabase
+            .from("subscriptions")
+            .update({ status: "past_due" })
+            .eq("stripe_subscription_id", invoice.subscription);
         }
         break;
       }

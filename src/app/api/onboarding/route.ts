@@ -15,7 +15,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { hashPassword } from "@/lib/auth";
 import { createCheckoutSession } from "@/integrations/stripe";
 
@@ -42,9 +42,15 @@ export async function POST(req: NextRequest) {
 
     const { businessName, industry, website, email, password, tier } = parsed.data;
     const origin = req.headers.get("origin") ?? "https://rocketradiosales.com";
+    const supabase = getSupabaseAdmin();
 
     // 1. Check if email is already in use
-    const existingUser = await prisma.appUser.findFirst({ where: { email } });
+    const { data: existingUser } = await supabase
+      .from("app_users")
+      .select("id")
+      .eq("email", email)
+      .single();
+
     if (existingUser) {
       return NextResponse.json(
         { ok: false, error: "An account with this email already exists" },
@@ -60,58 +66,64 @@ export async function POST(req: NextRequest) {
       .slice(0, 50);
 
     // Ensure slug is unique
-    const existingTenant = await prisma.tenant.findUnique({ where: { slug } });
+    const { data: existingTenant } = await supabase
+      .from("tenants")
+      .select("id")
+      .eq("slug", slug)
+      .single();
+
     const finalSlug = existingTenant ? `${slug}-${Date.now()}` : slug;
 
     // 3. Create Tenant
-    const tenant = await prisma.tenant.create({
-      data: {
+    const { data: tenant, error: tenantError } = await supabase
+      .from("tenants")
+      .insert({
         name: businessName,
         slug: finalSlug,
-        planTier: "starter", // Updated by Stripe webhook after payment
-      },
-    });
+        plan_tier: "starter", // Updated by Stripe webhook after payment
+      })
+      .select("id")
+      .single();
+
+    if (tenantError || !tenant) {
+      throw new Error(tenantError?.message ?? "Failed to create tenant");
+    }
+
+    const tenantId = (tenant as { id: string }).id;
 
     // 4. Hash password + create AppUser
     const passwordHash = await hashPassword(password);
-    const user = await prisma.appUser.create({
-      data: {
-        id: crypto.randomUUID(),
-        tenantId: tenant.id,
-        email,
-        name: businessName,
-        role: "client_owner",
-        brandAccess: [],
-      },
+    await supabase.from("app_users").insert({
+      id: crypto.randomUUID(),
+      tenant_id: tenantId,
+      email,
+      name: businessName,
+      role: "client_owner",
+      password_hash: passwordHash,
+      brand_access: [],
     });
 
     // 5. Create a Brand for the tenant
-    await prisma.brand.create({
-      data: {
-        tenantId: tenant.id,
-        name: businessName,
-        industry: industry ?? "",
-        websiteUrl: website ?? "",
-        accentColor: "#E53935",
-      },
+    await supabase.from("brands").insert({
+      tenant_id: tenantId,
+      name: businessName,
+      industry: industry ?? "",
+      website_url: website ?? "",
+      accent_color: "#E53935",
     });
 
     // 6. Create Stripe checkout session
     const checkout = await createCheckoutSession({
       tier,
-      tenantId: tenant.id,
+      tenantId,
       customerEmail: email,
       successUrl: `${origin}/dashboard?onboarding=complete&tier=${tier}`,
       cancelUrl: `${origin}/onboarding?step=3&cancelled=true`,
     });
 
-    // Suppress unused variable warning — passwordHash stored with user for future auth migration
-    void passwordHash;
-    void user;
-
     return NextResponse.json({
       ok: true,
-      tenantId: tenant.id,
+      tenantId,
       checkoutUrl: checkout.checkoutUrl,
       mode: checkout.mode,
     }, { status: 201 });
