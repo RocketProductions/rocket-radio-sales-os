@@ -18,6 +18,9 @@ export const RadioScriptInputSchema = z.object({
   approvedExamples: z.string().optional(), // approved scripts from same industry
   // Framework override
   framework:        z.string().optional(),
+  // Contact info — injected as ground truth so AI never guesses
+  website:          z.string().optional(),
+  phone:            z.string().optional(),
   // Routing (stripped before AI call — used by generate route only)
   sessionId:        z.string().optional(),
 });
@@ -37,7 +40,17 @@ export const RadioScriptOutputSchema = z.object({
 
 export type RadioScriptOutput = z.infer<typeof RadioScriptOutputSchema>;
 
+/** Strip protocol and www — radio listeners hear URLs, not read them */
+function radioUrl(url: string): string {
+  return url.replace(/^https?:\/\//i, "").replace(/^www\./i, "").replace(/\/$/, "");
+}
+
 export function buildScriptUserPrompt(input: RadioScriptInput): string {
+  // Ground truth — AI must use these exactly as provided
+  const groundTruth: string[] = [];
+  if (input.website) groundTruth.push(`Website (use EXACTLY as written, no https:// or www): ${radioUrl(input.website)}`);
+  if (input.phone)   groundTruth.push(`Phone (use EXACTLY as written): ${input.phone}`);
+
   const lines = [
     `Business: ${input.businessName} (${input.industry})`,
     `Offer: ${input.offer}`,
@@ -48,6 +61,7 @@ export function buildScriptUserPrompt(input: RadioScriptInput): string {
     input.campaignType  ? `Campaign Type: ${input.campaignType.replace(/_/g, " ")}` : null,
     input.offerScore    ? `Offer Score: ${input.offerScore}/10` : null,
     input.brandContext  ? `\n${input.brandContext}`             : null,
+    groundTruth.length  ? `\nCRITICAL — Use these contact details verbatim in the CTA:\n${groundTruth.join("\n")}` : null,
   ].filter(Boolean).join("\n");
 
   const frameworkInstruction = input.framework

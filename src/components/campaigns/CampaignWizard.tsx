@@ -26,6 +26,7 @@ interface IntakeForm {
   businessName: string;
   industry: string;
   website: string;
+  phone: string;
   primaryGoal: string;
   targetAudience: string;
   offer: string;
@@ -115,6 +116,7 @@ export function CampaignWizard({ initialData }: { initialData?: InitialSessionDa
     businessName:   initialData?.businessName ?? "",
     industry:       initialData?.intakeForm?.industry       ?? "",
     website:        initialData?.intakeForm?.website        ?? "",
+    phone:          initialData?.intakeForm?.phone          ?? "",
     primaryGoal:    initialData?.intakeForm?.primaryGoal    ?? "leads",
     targetAudience: initialData?.intakeForm?.targetAudience ?? "",
     offer:          initialData?.intakeForm?.offer          ?? "",
@@ -293,6 +295,7 @@ export function CampaignWizard({ initialData }: { initialData?: InitialSessionDa
           intakeForm:   {
             industry:       form.industry,
             website:        form.website,
+            phone:          form.phone,
             primaryGoal:    form.primaryGoal,
             targetAudience: form.targetAudience,
             offer:          form.offer,
@@ -344,6 +347,9 @@ export function CampaignWizard({ initialData }: { initialData?: InitialSessionDa
       industry:       form.industry,
       offer:          brief?.offerDefinition.offer ?? form.offer,
       targetAudience: (brief?.targetAudience.primary ?? form.targetAudience) || undefined,
+      // Ground truth — never let AI guess these
+      website:        form.website  || undefined,
+      phone:          form.phone    || undefined,
       // Brief context flows downstream
       bigIdea:        brief?.bigIdea,
       campaignType:   brief?.campaignType,
@@ -546,6 +552,17 @@ export function CampaignWizard({ initialData }: { initialData?: InitialSessionDa
                   <AlertCircle className="h-3.5 w-3.5 shrink-0" />{scanError}
                 </p>
               )}
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium">Phone Number</label>
+              <Input
+                value={form.phone}
+                onChange={(e) => update("phone", e.target.value)}
+                placeholder="e.g. 574-555-0100"
+                type="tel"
+              />
+              <p className="mt-1 text-xs text-rocket-muted">Used verbatim in radio scripts — no formatting changes.</p>
             </div>
 
             <div>
