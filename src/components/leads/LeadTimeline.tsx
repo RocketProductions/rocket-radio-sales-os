@@ -45,6 +45,9 @@ interface LeadTimelineProps {
 
 function eventIcon(type: string) {
   if (type.includes("text") || type === "auto_text") return <MessageSquare className="h-3.5 w-3.5" />;
+  if (type === "email_opened")  return <Mail className="h-3.5 w-3.5" />;
+  if (type === "email_clicked") return <CheckCircle2 className="h-3.5 w-3.5" />;
+  if (type === "email_bounced") return <AlertTriangle className="h-3.5 w-3.5" />;
   if (type.includes("email") || type === "auto_email") return <Mail className="h-3.5 w-3.5" />;
   if (type === "booked") return <Calendar className="h-3.5 w-3.5" />;
   if (type === "automation_stopped" || type === "automation_step_skipped") return <Ban className="h-3.5 w-3.5" />;
@@ -54,10 +57,12 @@ function eventIcon(type: string) {
 
 function eventColor(type: string) {
   if (type.includes("text") || type === "auto_text") return "text-rocket-blue bg-rocket-blue/10";
+  if (type === "email_opened")  return "text-green-600 bg-green-50";
+  if (type === "email_clicked") return "text-green-700 bg-green-100";
+  if (type === "email_bounced") return "text-red-500 bg-red-50";
   if (type.includes("email") || type === "auto_email") return "text-violet-600 bg-violet-50";
   if (type === "booked") return "text-green-600 bg-green-50";
   if (type.includes("stopped") || type.includes("skipped")) return "text-slate-500 bg-slate-100";
-  if (type === "auto_text") return "text-rocket-accent bg-rocket-accent/10";
   return "text-slate-500 bg-slate-100";
 }
 
