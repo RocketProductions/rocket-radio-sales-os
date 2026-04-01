@@ -1,76 +1,67 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
-import { triggerAutoResponse } from "@/lib/automation/engine";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
 const CreateLeadSchema = z.object({
-  campaignId: z.string().uuid(),
-  firstName: z.string().optional(),
-  lastName: z.string().optional(),
-  email: z.string().email().optional(),
-  phone: z.string().optional(),
-  source: z.enum(["manual", "meta_lead_ad", "form", "second_street"]).default("manual"),
-  notes: z.string().optional(),
+  landingPageId: z.string().uuid(),
+  name:          z.string().optional(),
+  phone:         z.string().optional(),
+  email:         z.string().email().optional(),
+  extraFields:   z.record(z.unknown()).optional(),
 });
 
-/** GET /api/leads — list leads, optionally filtered by campaignId */
+/** GET /api/leads — list leads, optionally filtered by landingPageId or status */
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-    const campaignId = searchParams.get("campaignId");
-    const status = searchParams.get("status");
-    const limit = Math.min(parseInt(searchParams.get("limit") ?? "50"), 100);
+    const landingPageId = searchParams.get("landingPageId");
+    const status        = searchParams.get("status");
+    const limit         = Math.min(parseInt(searchParams.get("limit") ?? "50"), 100);
 
-    const where: Record<string, unknown> = {};
-    if (campaignId) where.campaignId = campaignId;
-    if (status) where.status = status;
+    const supabase = getSupabaseAdmin();
 
-    const leads = await prisma.lead.findMany({
-      where,
-      include: {
-        events: { orderBy: { createdAt: "desc" }, take: 3 },
-        campaign: { select: { id: true, name: true } },
-      },
-      orderBy: { createdAt: "desc" },
-      take: limit,
-    });
+    let query = supabase
+      .from("lp_leads")
+      .select(`
+        id, name, email, phone, status, notes, created_at, updated_at,
+        landing_pages ( id, business_name, slug, session_id )
+      `)
+      .order("created_at", { ascending: false })
+      .limit(limit);
 
-    return NextResponse.json({ ok: true, data: leads });
+    if (landingPageId) query = query.eq("landing_page_id", landingPageId);
+    if (status)        query = query.eq("status", status);
+
+    const { data, error } = await query;
+    if (error) throw new Error(error.message);
+
+    return NextResponse.json({ ok: true, data });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }
 
-/** POST /api/leads — create a new lead (manual entry or form submission) */
+/** POST /api/leads — create a new lead manually */
 export async function POST(req: Request) {
   try {
-    const body = CreateLeadSchema.parse(await req.json());
+    const body     = CreateLeadSchema.parse(await req.json());
+    const supabase = getSupabaseAdmin();
 
-    const lead = await prisma.lead.create({
-      data: {
-        campaignId: body.campaignId,
-        firstName: body.firstName,
-        lastName: body.lastName,
-        email: body.email,
-        phone: body.phone,
-        source: body.source,
-        notes: body.notes,
-        status: "new",
-      },
-    });
+    const { data: lead, error } = await supabase
+      .from("lp_leads")
+      .insert({
+        landing_page_id: body.landingPageId,
+        name:            body.name,
+        phone:           body.phone,
+        email:           body.email,
+        extra_fields:    body.extraFields ?? {},
+        status:          "new",
+      })
+      .select()
+      .single();
 
-    // Log the lead creation event
-    await prisma.leadEvent.create({
-      data: {
-        leadId: lead.id,
-        eventType: "lead_created",
-        message: `New lead from ${body.source}: ${[body.firstName, body.lastName].filter(Boolean).join(" ") || "Unknown"}`,
-      },
-    });
-
-    // Trigger auto-response (non-blocking)
-    triggerAutoResponse(lead.id).catch(console.error);
+    if (error) throw new Error(error.message);
 
     return NextResponse.json({ ok: true, data: lead }, { status: 201 });
   } catch (err) {

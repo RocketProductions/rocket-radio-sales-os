@@ -1,4 +1,5 @@
-import { prisma } from "@/lib/prisma";
+import { headers } from "next/headers";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FunnelBar } from "@/components/reports/FunnelBar";
 import { StatTile } from "@/components/reports/StatTile";
@@ -10,93 +11,97 @@ export const dynamic = "force-dynamic";
 
 /**
  * Internal Reporting Dashboard
- *
- * Answers the question every sales rep and manager needs:
- * "Are our campaigns working? How many leads are we converting?"
- *
- * MVP item 7: Simple view — how many leads, how many contacted,
- * how many booked, how many closed.
+ * Source of truth: lp_leads (real lead data) + campaign_sessions (campaign data)
+ * MVP item 7: leads, contact rate, booked, closed.
  */
 export default async function ReportsPage() {
-  // ─── Aggregate all lead data ─────────────────────────────────────────────
-  let allLeads: Array<{ status: string; source: string; createdAt: Date }> = [];
-  let campaigns: Array<{
-    id: string;
-    name: string;
-    status: string;
-    brand: { name: string };
-    _count: { leads: number };
-    leads: Array<{ status: string }>;
-  }> = [];
+  const headersList = await headers();
+  const tenantId  = headersList.get("x-tenant-id") ?? "";
+  const userRole  = headersList.get("x-user-role") ?? "";
+  const isSuperAdmin = userRole === "super_admin";
 
-  try {
-    [allLeads, campaigns] = await Promise.all([
-      prisma.lead.findMany({
-        select: { status: true, source: true, createdAt: true },
-      }),
-      prisma.campaign.findMany({
-        select: {
-          id: true,
-          name: true,
-          status: true,
-          brand: { select: { name: true } },
-          _count: { select: { leads: true } },
-          leads: { select: { status: true } },
-        },
-        orderBy: { createdAt: "desc" },
-      }),
-    ]);
-  } catch {
-    // DB not connected — show empty state
+  const supabase = getSupabaseAdmin();
+
+  // ─── Fetch sessions for this tenant ────────────────────────────────────────
+  let sessionsQuery = supabase
+    .from("campaign_sessions")
+    .select("session_id, business_name, updated_at, created_at")
+    .eq("status", "active")
+    .order("updated_at", { ascending: false });
+
+  if (!isSuperAdmin && tenantId) {
+    sessionsQuery = sessionsQuery.eq("tenant_id", tenantId);
   }
 
-  // ─── Funnel counts ────────────────────────────────────────────────────────
-  const total = allLeads.length;
+  const { data: sessions } = await sessionsQuery;
+  const sessionIds = (sessions ?? []).map((s: { session_id: string }) => s.session_id);
+
+  // ─── Fetch landing pages linked to those sessions ───────────────────────────
+  const { data: landingPages } = sessionIds.length > 0
+    ? await supabase
+        .from("landing_pages")
+        .select("id, slug, business_name, session_id, lead_count")
+        .in("session_id", sessionIds)
+    : { data: [] };
+
+  const lpIds = (landingPages ?? []).map((lp: { id: string }) => lp.id);
+  // ─── Fetch all leads for those landing pages ────────────────────────────────
+  const { data: allLeadRows } = lpIds.length > 0
+    ? await supabase
+        .from("lp_leads")
+        .select("id, status, created_at, landing_page_id")
+        .in("landing_page_id", lpIds)
+    : { data: [] };
+
+  type LeadRow = { id: string; status: string; created_at: string; landing_page_id: string };
+  const allLeads = (allLeadRows ?? []) as LeadRow[];
+
+  // ─── Funnel counts ──────────────────────────────────────────────────────────
+  const total     = allLeads.length;
   const contacted = allLeads.filter((l) => l.status !== "new").length;
-  const booked = allLeads.filter((l) =>
-    ["booked", "closed"].includes(l.status),
-  ).length;
-  const closed = allLeads.filter((l) => l.status === "closed").length;
-  const lost = allLeads.filter((l) => l.status === "lost").length;
+  const booked    = allLeads.filter((l) => ["booked", "closed"].includes(l.status)).length;
+  const closed    = allLeads.filter((l) => l.status === "closed").length;
+  const lost      = allLeads.filter((l) => l.status === "lost").length;
 
-  // ─── Conversion rates ─────────────────────────────────────────────────────
   const contactRate = total > 0 ? Math.round((contacted / total) * 100) : 0;
-  const bookRate = contacted > 0 ? Math.round((booked / contacted) * 100) : 0;
-  const closeRate = booked > 0 ? Math.round((closed / booked) * 100) : 0;
+  const bookRate    = contacted > 0 ? Math.round((booked / contacted) * 100) : 0;
+  const closeRate   = booked > 0 ? Math.round((closed / booked) * 100) : 0;
 
-  // ─── Source breakdown ─────────────────────────────────────────────────────
-  const sourceCounts = allLeads.reduce<Record<string, number>>((acc, l) => {
-    acc[l.source] = (acc[l.source] ?? 0) + 1;
-    return acc;
-  }, {});
-  const sources = Object.entries(sourceCounts)
-    .map(([source, count]) => ({ source, count }))
-    .sort((a, b) => b.count - a.count);
-
-  // ─── This month vs last month ─────────────────────────────────────────────
+  // ─── This month vs last month ───────────────────────────────────────────────
   const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const startOfMonth     = new Date(now.getFullYear(), now.getMonth(), 1);
   const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const thisMonthLeads = allLeads.filter((l) => l.createdAt >= startOfMonth).length;
+  const thisMonthLeads = allLeads.filter((l) => new Date(l.created_at) >= startOfMonth).length;
   const lastMonthLeads = allLeads.filter(
-    (l) => l.createdAt >= startOfLastMonth && l.createdAt < startOfMonth,
+    (l) => new Date(l.created_at) >= startOfLastMonth && new Date(l.created_at) < startOfMonth,
   ).length;
   const monthTrend = thisMonthLeads - lastMonthLeads;
 
-  // ─── Campaign rows ────────────────────────────────────────────────────────
-  const campaignRows = campaigns.map((c) => ({
-    id: c.id,
-    name: c.name,
-    brandName: c.brand.name,
-    status: c.status,
-    totalLeads: c._count.leads,
-    contacted: c.leads.filter((l) => l.status !== "new").length,
-    booked: c.leads.filter((l) => ["booked", "closed"].includes(l.status)).length,
-    closed: c.leads.filter((l) => l.status === "closed").length,
-  }));
+  // ─── Source breakdown — all from landing pages for now ─────────────────────
+  const sources = total > 0 ? [{ source: "landing_page", count: total }] : [];
 
-  // ─── Empty state ──────────────────────────────────────────────────────────
-  if (total === 0 && campaigns.length === 0) {
+  // ─── Campaign rows ──────────────────────────────────────────────────────────
+  type SessionRow = { session_id: string; business_name: string; updated_at: string; created_at: string };
+  const campaignRows = (sessions ?? []).map((s: SessionRow) => {
+    const lp = (landingPages ?? []).find((l: { session_id: string | null }) => l.session_id === s.session_id);
+    const lpLeads = lp
+      ? allLeads.filter((l) => l.landing_page_id === lp.id)
+      : [];
+
+    return {
+      id:         s.session_id,
+      name:       s.business_name,
+      brandName:  s.business_name,
+      status:     "active" as const,
+      totalLeads: lpLeads.length,
+      contacted:  lpLeads.filter((l) => l.status !== "new").length,
+      booked:     lpLeads.filter((l) => ["booked", "closed"].includes(l.status)).length,
+      closed:     lpLeads.filter((l) => l.status === "closed").length,
+    };
+  });
+
+  // ─── Empty state ────────────────────────────────────────────────────────────
+  if (total === 0 && (sessions ?? []).length === 0) {
     return (
       <div className="space-y-6">
         <div>
@@ -120,21 +125,15 @@ export default async function ReportsPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold">Reports</h1>
-        <p className="mt-1 text-rocket-muted">
-          Campaign performance and lead outcomes — all time.
-        </p>
+        <p className="mt-1 text-rocket-muted">Campaign performance and lead outcomes — all time.</p>
       </div>
 
-      {/* ─── Top Stats ─────────────────────────────────────────────────── */}
+      {/* ─── Top Stats ──────────────────────────────────────────────────────── */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatTile
           label="Total Leads"
           value={total}
-          trendLabel={
-            monthTrend >= 0
-              ? `+${monthTrend} this month`
-              : `${monthTrend} this month`
-          }
+          trendLabel={monthTrend >= 0 ? `+${monthTrend} this month` : `${monthTrend} this month`}
           trend={monthTrend >= 0 ? "up" : "down"}
           accent
         />
@@ -161,79 +160,33 @@ export default async function ReportsPage() {
         />
       </div>
 
-      {/* ─── Funnel + Source side by side ──────────────────────────────── */}
+      {/* ─── Funnel + Source ────────────────────────────────────────────────── */}
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Lead Funnel */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Lead Funnel</CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle className="text-base">Lead Funnel</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            <FunnelBar
-              label="New Leads"
-              count={total}
-              total={total}
-              color="bg-rocket-blue"
-              sublabel="captured"
-            />
-            <FunnelBar
-              label="Contacted"
-              count={contacted}
-              total={total}
-              color="bg-rocket-accent"
-              sublabel="texted or emailed"
-            />
-            <FunnelBar
-              label="Booked"
-              count={booked}
-              total={total}
-              color="bg-rocket-success"
-              sublabel="appointment set"
-            />
-            <FunnelBar
-              label="Closed"
-              count={closed}
-              total={total}
-              color="bg-green-700"
-              sublabel="new customers"
-            />
+            <FunnelBar label="New Leads"  count={total}     total={total} color="bg-rocket-blue"    sublabel="captured" />
+            <FunnelBar label="Contacted"  count={contacted} total={total} color="bg-rocket-accent"  sublabel="texted or emailed" />
+            <FunnelBar label="Booked"     count={booked}    total={total} color="bg-rocket-success" sublabel="appointment set" />
+            <FunnelBar label="Closed"     count={closed}    total={total} color="bg-green-700"      sublabel="new customers" />
             {lost > 0 && (
-              <FunnelBar
-                label="Lost"
-                count={lost}
-                total={total}
-                color="bg-rocket-muted"
-                sublabel="not converted"
-              />
+              <FunnelBar label="Lost" count={lost} total={total} color="bg-rocket-muted" sublabel="not converted" />
             )}
           </CardContent>
         </Card>
 
-        {/* Lead Sources */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Lead Sources</CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle className="text-base">Lead Sources</CardTitle></CardHeader>
           <CardContent>
             <SourceBreakdown sources={sources} total={total} />
-
-            {/* This month callout */}
             <div className="mt-6 rounded-md border border-rocket-border bg-rocket-bg p-3">
               <p className="text-xs text-rocket-muted">This month</p>
               <p className="mt-0.5 text-2xl font-bold text-rocket-dark">{thisMonthLeads}</p>
               <p className="text-xs text-rocket-muted">
                 leads captured
                 {lastMonthLeads > 0 && (
-                  <span
-                    className={
-                      monthTrend >= 0
-                        ? " text-rocket-success"
-                        : " text-rocket-danger"
-                    }
-                  >
-                    {" "}
-                    ({monthTrend >= 0 ? "+" : ""}
-                    {monthTrend} vs last month)
+                  <span className={monthTrend >= 0 ? " text-rocket-success" : " text-rocket-danger"}>
+                    {" "}({monthTrend >= 0 ? "+" : ""}{monthTrend} vs last month)
                   </span>
                 )}
               </p>
@@ -242,20 +195,22 @@ export default async function ReportsPage() {
         </Card>
       </div>
 
-      {/* ─── Campaign Breakdown ─────────────────────────────────────────── */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">
-            By Campaign
-            <span className="ml-2 text-sm font-normal text-rocket-muted">
-              {campaigns.length} campaign{campaigns.length !== 1 ? "s" : ""}
-            </span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <CampaignTable campaigns={campaignRows} />
-        </CardContent>
-      </Card>
+      {/* ─── Campaign Breakdown ──────────────────────────────────────────────── */}
+      {campaignRows.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">
+              By Campaign
+              <span className="ml-2 text-sm font-normal text-rocket-muted">
+                {campaignRows.length} campaign{campaignRows.length !== 1 ? "s" : ""}
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <CampaignTable campaigns={campaignRows} />
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

@@ -1,38 +1,85 @@
-import { prisma } from "@/lib/prisma";
+import { headers } from "next/headers";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LeadStatusBadge } from "@/components/leads/LeadStatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { UserCheck } from "lucide-react";
+import { LeadStatusUpdater } from "@/components/leads/LeadStatusUpdater";
 
 export const dynamic = "force-dynamic";
 
 /**
  * Internal Leads View (for reps)
  * Shows all leads across all campaigns and clients.
+ * Source of truth: lp_leads joined with landing_pages.
  */
 export default async function LeadsPage() {
-  let leads: Array<{
+  const headersList = await headers();
+  const tenantId  = headersList.get("x-tenant-id") ?? "";
+  const userRole  = headersList.get("x-user-role") ?? "";
+  const isSuperAdmin = userRole === "super_admin";
+
+  const supabase = getSupabaseAdmin();
+
+  // Fetch leads with their landing page context (business name, slug)
+  const { data: rawLeads } = await supabase
+    .from("lp_leads")
+    .select(`
+      id,
+      name,
+      email,
+      phone,
+      status,
+      notes,
+      created_at,
+      landing_pages (
+        id,
+        business_name,
+        slug,
+        session_id
+      )
+    `)
+    .order("created_at", { ascending: false })
+    .limit(100);
+
+  // If not super admin, filter to leads belonging to this tenant's landing pages
+  // (landing_pages doesn't have tenant_id yet — filter via campaign_sessions)
+  type LpLead = {
     id: string;
-    firstName: string | null;
-    lastName: string | null;
+    name: string | null;
     email: string | null;
     phone: string | null;
     status: string;
-    source: string;
-    createdAt: Date;
-    campaign: { id: string; name: string; brand: { name: string } };
-  }> = [];
+    notes: string | null;
+    created_at: string;
+    landing_pages: {
+      id: string;
+      business_name: string | null;
+      slug: string;
+      session_id: string | null;
+    } | null;
+  };
 
-  try {
-    leads = await prisma.lead.findMany({
-      include: {
-        campaign: { select: { id: true, name: true, brand: { select: { name: true } } } },
-      },
-      orderBy: { createdAt: "desc" },
-      take: 50,
-    });
-  } catch {
-    // DB not connected — show empty state
+  let leads = (rawLeads ?? []) as LpLead[];
+
+  // For non-super-admins: filter to sessions belonging to this tenant
+  if (!isSuperAdmin && tenantId && leads.length > 0) {
+    const sessionIds = leads
+      .map((l) => l.landing_pages?.session_id)
+      .filter(Boolean) as string[];
+
+    if (sessionIds.length > 0) {
+      const { data: tenantSessions } = await supabase
+        .from("campaign_sessions")
+        .select("session_id")
+        .eq("tenant_id", tenantId)
+        .in("session_id", sessionIds);
+
+      const allowedSessionIds = new Set((tenantSessions ?? []).map((s: { session_id: string }) => s.session_id));
+      leads = leads.filter(
+        (l) => !l.landing_pages?.session_id || allowedSessionIds.has(l.landing_pages.session_id),
+      );
+    }
   }
 
   return (
@@ -50,37 +97,42 @@ export default async function LeadsPage() {
             <UserCheck className="mb-4 h-12 w-12 text-rocket-border" />
             <h3 className="text-lg font-medium">No leads yet</h3>
             <p className="mt-1 max-w-sm text-sm text-rocket-muted">
-              Leads will appear here as they come in from your campaigns — via forms, Meta Lead Ads, or manual entry.
+              Leads appear here when someone fills out a landing page form or you add one manually.
             </p>
           </CardContent>
         </Card>
       ) : (
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">{leads.length} Leads</CardTitle>
+            <CardTitle className="text-lg">{leads.length} Lead{leads.length !== 1 ? "s" : ""}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
               {leads.map((lead) => (
-                <div key={lead.id} className="flex items-center justify-between rounded-md border border-rocket-border p-3">
-                  <div className="flex items-center gap-4">
-                    <div>
-                      <p className="font-medium text-sm">
-                        {[lead.firstName, lead.lastName].filter(Boolean).join(" ") || "Unknown"}
-                      </p>
-                      <p className="text-xs text-rocket-muted">
-                        {lead.email ?? lead.phone ?? "No contact info"}
-                      </p>
-                    </div>
+                <div
+                  key={lead.id}
+                  className="flex items-center justify-between rounded-md border border-rocket-border p-3 gap-3"
+                >
+                  <div className="min-w-0">
+                    <p className="font-medium text-sm text-rocket-dark truncate">
+                      {lead.name || "Unknown"}
+                    </p>
+                    <p className="text-xs text-rocket-muted truncate">
+                      {lead.email ?? lead.phone ?? "No contact info"}
+                    </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary" className="text-xs">
-                      {lead.campaign.brand.name}
-                    </Badge>
-                    <Badge variant="outline" className="text-xs">
-                      {lead.source.replace(/_/g, " ")}
-                    </Badge>
+
+                  <div className="flex shrink-0 items-center gap-2">
+                    {lead.landing_pages?.business_name && (
+                      <Badge variant="secondary" className="hidden sm:inline-flex text-xs">
+                        {lead.landing_pages.business_name}
+                      </Badge>
+                    )}
+                    <span className="hidden sm:block text-xs text-rocket-muted">
+                      {new Date(lead.created_at).toLocaleDateString()}
+                    </span>
                     <LeadStatusBadge status={lead.status} />
+                    <LeadStatusUpdater leadId={lead.id} currentStatus={lead.status} />
                   </div>
                 </div>
               ))}

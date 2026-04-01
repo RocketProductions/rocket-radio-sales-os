@@ -1,8 +1,9 @@
-import { prisma } from "@/lib/prisma";
+import { headers } from "next/headers";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { LeadsSummaryCard } from "@/components/dashboard/LeadsSummaryCard";
-import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LeadStatusBadge } from "@/components/leads/LeadStatusBadge";
+import { LeadStatusUpdater } from "@/components/leads/LeadStatusUpdater";
 import { UserCheck, Phone, CalendarCheck, TrendingUp } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -14,48 +15,75 @@ export const dynamic = "force-dynamic";
  *
  * Shows:
  * - Big number cards (total leads, contacted, booked, closed)
- * - Recent leads with status
- * - Activity feed ("We texted Sarah at 2:03pm")
+ * - Recent leads with status + one-tap status update
+ * - Activity feed (lead arrival timeline)
  */
 export default async function PortalPage() {
-  // In production, filter by the logged-in client's brand
-  // For MVP, show all leads from the most recent active campaign
-  let leads: Array<{
+  const headersList = await headers();
+  const tenantId  = headersList.get("x-tenant-id") ?? "";
+  const userRole  = headersList.get("x-user-role") ?? "";
+  const isSuperAdmin = userRole === "super_admin";
+
+  const supabase = getSupabaseAdmin();
+
+  type LpLead = {
     id: string;
-    firstName: string | null;
-    lastName: string | null;
+    name: string | null;
+    email: string | null;
+    phone: string | null;
     status: string;
-    source: string;
-    createdAt: Date;
-    events: Array<{ id: string; eventType: string; message: string | null; createdAt: Date }>;
-  }> = [];
+    created_at: string;
+    landing_pages: {
+      business_name: string | null;
+      slug: string;
+      session_id: string | null;
+    } | null;
+  };
 
-  let stats = { total: 0, contacted: 0, booked: 0, closed: 0 };
+  const { data: rawLeads } = await supabase
+    .from("lp_leads")
+    .select(`
+      id, name, email, phone, status, created_at,
+      landing_pages ( business_name, slug, session_id )
+    `)
+    .order("created_at", { ascending: false })
+    .limit(50);
 
-  try {
-    leads = await prisma.lead.findMany({
-      include: {
-        events: { orderBy: { createdAt: "desc" }, take: 2 },
-      },
-      orderBy: { createdAt: "desc" },
-      take: 20,
-    });
+  let leads = (rawLeads ?? []) as LpLead[];
 
-    stats = {
-      total: leads.length,
-      contacted: leads.filter((l) => l.status === "contacted").length,
-      booked: leads.filter((l) => l.status === "booked").length,
-      closed: leads.filter((l) => l.status === "closed").length,
-    };
-  } catch {
-    // DB not connected — show empty state
+  // Filter to this tenant's leads
+  if (!isSuperAdmin && tenantId && leads.length > 0) {
+    const sessionIds = leads
+      .map((l) => l.landing_pages?.session_id)
+      .filter(Boolean) as string[];
+
+    if (sessionIds.length > 0) {
+      const { data: tenantSessions } = await supabase
+        .from("campaign_sessions")
+        .select("session_id")
+        .eq("tenant_id", tenantId)
+        .in("session_id", sessionIds);
+
+      const allowed = new Set((tenantSessions ?? []).map((s: { session_id: string }) => s.session_id));
+      leads = leads.filter(
+        (l) => !l.landing_pages?.session_id || allowed.has(l.landing_pages.session_id),
+      );
+    }
   }
 
-  // Flatten all events for activity feed
-  const allEvents = leads
-    .flatMap((l) => l.events)
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .slice(0, 15);
+  const stats = {
+    total:     leads.length,
+    contacted: leads.filter((l) => l.status === "contacted").length,
+    booked:    leads.filter((l) => l.status === "booked").length,
+    closed:    leads.filter((l) => l.status === "closed").length,
+  };
+
+  // Activity feed: most recent leads as timeline events
+  const activityItems = leads.slice(0, 15).map((l) => ({
+    id:        l.id,
+    message:   `New lead: ${l.name ?? "Unknown"} from ${l.landing_pages?.business_name ?? "landing page"}`,
+    createdAt: l.created_at,
+  }));
 
   return (
     <div className="space-y-6">
@@ -64,7 +92,7 @@ export default async function PortalPage() {
         <LeadsSummaryCard
           label="Total Leads"
           value={stats.total}
-          description="This month"
+          description="All time"
           icon={<UserCheck className="h-4 w-4 text-rocket-muted" />}
         />
         <LeadsSummaryCard
@@ -101,16 +129,23 @@ export default async function PortalPage() {
             ) : (
               <div className="space-y-3">
                 {leads.slice(0, 10).map((lead) => (
-                  <div key={lead.id} className="flex items-center justify-between rounded-md border border-rocket-border p-3">
-                    <div>
-                      <p className="font-medium text-sm">
-                        {[lead.firstName, lead.lastName].filter(Boolean).join(" ") || "Unknown"}
+                  <div
+                    key={lead.id}
+                    className="flex items-center justify-between rounded-md border border-rocket-border p-3 gap-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm text-rocket-dark truncate">
+                        {lead.name ?? "Unknown"}
                       </p>
                       <p className="text-xs text-rocket-muted">
-                        {new Date(lead.createdAt).toLocaleDateString()}
+                        {lead.email ?? lead.phone ?? "No contact info"} &middot;{" "}
+                        {new Date(lead.created_at).toLocaleDateString()}
                       </p>
                     </div>
-                    <LeadStatusBadge status={lead.status} />
+                    <div className="flex shrink-0 items-center gap-2">
+                      <LeadStatusBadge status={lead.status} />
+                      <LeadStatusUpdater leadId={lead.id} currentStatus={lead.status} />
+                    </div>
                   </div>
                 ))}
               </div>
@@ -119,7 +154,32 @@ export default async function PortalPage() {
         </Card>
 
         {/* Activity Feed */}
-        <ActivityFeed events={allEvents.map((e) => ({ ...e, createdAt: e.createdAt.toISOString() }))} />
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Activity</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {activityItems.length === 0 ? (
+              <p className="py-8 text-center text-sm text-rocket-muted">
+                Activity will appear here as leads come in.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {activityItems.map((item) => (
+                  <div key={item.id} className="flex gap-3 text-sm">
+                    <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-rocket-blue/60 ring-4 ring-rocket-blue/10" />
+                    <div className="min-w-0">
+                      <p className="text-rocket-dark">{item.message}</p>
+                      <p className="text-xs text-rocket-muted">
+                        {new Date(item.createdAt).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
