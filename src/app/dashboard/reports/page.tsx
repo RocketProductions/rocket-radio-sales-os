@@ -49,11 +49,11 @@ export default async function ReportsPage() {
   const { data: allLeadRows } = lpIds.length > 0
     ? await supabase
         .from("lp_leads")
-        .select("id, status, created_at, landing_page_id")
+        .select("id, status, created_at, landing_page_id, extra_fields")
         .in("landing_page_id", lpIds)
     : { data: [] };
 
-  type LeadRow = { id: string; status: string; created_at: string; landing_page_id: string };
+  type LeadRow = { id: string; status: string; created_at: string; landing_page_id: string; extra_fields: Record<string, string> | null };
   const allLeads = (allLeadRows ?? []) as LeadRow[];
 
   // ─── Funnel counts ──────────────────────────────────────────────────────────
@@ -77,8 +77,15 @@ export default async function ReportsPage() {
   ).length;
   const monthTrend = thisMonthLeads - lastMonthLeads;
 
-  // ─── Source breakdown — all from landing pages for now ─────────────────────
-  const sources = total > 0 ? [{ source: "landing_page", count: total }] : [];
+  // ─── Source breakdown — from "How did you hear about us?" field ────────────
+  const sourceCounts = new Map<string, number>();
+  for (const lead of allLeads) {
+    const referral = lead.extra_fields?.["How did you hear about us?"] ?? "Not specified";
+    sourceCounts.set(referral, (sourceCounts.get(referral) ?? 0) + 1);
+  }
+  const sources = Array.from(sourceCounts.entries())
+    .map(([source, count]) => ({ source, count }))
+    .sort((a, b) => b.count - a.count);
 
   // ─── Campaign rows ──────────────────────────────────────────────────────────
   type SessionRow = { session_id: string; business_name: string; updated_at: string; created_at: string };
