@@ -143,6 +143,8 @@ export default async function LandingPage({
                   formFields={formFields}
                   ctaText={ctaText}
                   accentColor={accent}
+                  businessName={businessName}
+                  shareText={`I just connected with ${businessName}! ${headline} — check out their offer:`}
                 />
               </div>
             </div>
