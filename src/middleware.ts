@@ -144,6 +144,7 @@ export async function middleware(req: NextRequest) {
   if (payload.tenantId) requestHeaders.set("x-tenant-id", payload.tenantId);
   if (payload.sub) requestHeaders.set("x-user-id", payload.sub);
   if (role) requestHeaders.set("x-user-role", role);
+  requestHeaders.set("x-pathname", pathname);
 
   return NextResponse.next({ request: { headers: requestHeaders } });
 }

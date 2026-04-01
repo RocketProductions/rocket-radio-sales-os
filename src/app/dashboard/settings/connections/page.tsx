@@ -44,18 +44,7 @@ export default async function ConnectionsPage({ searchParams }: PageProps) {
   const connections = await fetchConnections(tenantId);
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-8 space-y-6">
-      {/* Page heading */}
-      <div>
-        <h1 className="text-2xl font-bold text-rocket-dark">
-          Social Media Connections
-        </h1>
-        <p className="mt-1 text-sm text-rocket-muted">
-          Connect your social accounts to publish campaign content, sync leads,
-          and run ads directly from the dashboard.
-        </p>
-      </div>
-
+    <div className="space-y-6">
       {/* Error banner from OAuth redirect */}
       {error && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3">
