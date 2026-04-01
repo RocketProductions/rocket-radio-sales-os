@@ -126,6 +126,7 @@ export function CampaignWizard({ initialData }: { initialData?: InitialSessionDa
   const [brandKit, setBrandKit]         = useState<BrandKit | null>(initialData?.brandKit ?? null);
   const [brandKitId, setBrandKitId]     = useState<string | null>(initialData?.brandKitId ?? null);
   const [scrapedTitle, setScrapedTitle] = useState("");
+  const [colorSource, setColorSource]   = useState<string | null>(null);
   const [scanning, setScanning]         = useState(false);
   const [scanError, setScanError]       = useState("");
   const [aiSuggestedFields, setAiSuggestedFields] = useState<string[]>([]);
@@ -192,6 +193,7 @@ export function CampaignWizard({ initialData }: { initialData?: InitialSessionDa
       setBrandKit(json.kit as BrandKit);
       setBrandKitId(json.id ?? null);
       setScrapedTitle(json.scrapedTitle ?? "");
+      setColorSource(json.colorSource ?? null);
 
       // Pre-fill intake fields from multi-page scan — only if field is currently empty
       const suggested: string[] = [];
@@ -603,7 +605,13 @@ export function CampaignWizard({ initialData }: { initialData?: InitialSessionDa
 
       {/* ── Brand Kit ── */}
       {brandKit && (
-        <BrandKitCard kit={brandKit} websiteUrl={form.website} scrapedTitle={scrapedTitle} />
+        <BrandKitCard
+          kit={brandKit}
+          websiteUrl={form.website}
+          scrapedTitle={scrapedTitle}
+          brandKitId={brandKitId ?? undefined}
+          colorSource={colorSource ?? undefined}
+        />
       )}
 
       {/* ── Brief results ── */}

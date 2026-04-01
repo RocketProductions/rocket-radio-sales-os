@@ -1,18 +1,71 @@
 "use client";
 
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, Globe, Palette } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Sparkles, Globe, Palette, Loader2, RefreshCw } from "lucide-react";
 import type { BrandKit } from "@/ai/modes/brandAnalysis";
 
 interface BrandKitCardProps {
   kit: BrandKit;
   websiteUrl: string;
   scrapedTitle?: string;
+  brandKitId?: string;       // DB row ID — enables persisting color fixes
+  colorSource?: string;      // 'logo' | 'css' | 'none' — shown as badge
+  onColorsDetected?: (primary: string | null, secondary: string | null, accent: string | null) => void;
 }
 
-export function BrandKitCard({ kit, websiteUrl, scrapedTitle }: BrandKitCardProps) {
+export function BrandKitCard({ kit, websiteUrl, scrapedTitle, brandKitId, colorSource, onColorsDetected }: BrandKitCardProps) {
   const displayName = scrapedTitle || websiteUrl;
+
+  const [colors, setColors] = useState({
+    primary:   kit.primaryColor   ?? null,
+    secondary: kit.secondaryColor ?? null,
+    accent:    kit.accentColor    ?? null,
+  });
+  const [detecting, setDetecting] = useState(false);
+  const [detectError, setDetectError] = useState<string | null>(null);
+  const [resolvedSource, setResolvedSource] = useState<string | null>(colorSource ?? null);
+
+  const hasColors = colors.primary || colors.secondary || colors.accent;
+  const showDetectButton = kit.logoUrl && (!hasColors || resolvedSource === "css");
+
+  async function handleDetectFromLogo() {
+    if (!kit.logoUrl || detecting) return;
+    setDetecting(true);
+    setDetectError(null);
+
+    try {
+      const res = await fetch("/api/brand/colors-from-logo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          logoUrl:    kit.logoUrl,
+          brandKitId: brandKitId ?? undefined,
+        }),
+      });
+      const json = await res.json() as {
+        ok: boolean;
+        colors?: { primaryColor: string | null; secondaryColor: string | null; accentColor: string | null; confidence: string };
+        error?: string;
+      };
+
+      if (!json.ok || !json.colors) {
+        setDetectError(json.error ?? "Could not detect colors from logo");
+        return;
+      }
+
+      const { primaryColor, secondaryColor, accentColor } = json.colors;
+      setColors({ primary: primaryColor, secondary: secondaryColor, accent: accentColor });
+      setResolvedSource("logo");
+      onColorsDetected?.(primaryColor, secondaryColor, accentColor);
+    } catch {
+      setDetectError("Network error — please try again");
+    } finally {
+      setDetecting(false);
+    }
+  }
 
   return (
     <Card className="border-rocket-accent/40 bg-gradient-to-br from-rocket-accent/5 to-rocket-blue/5">
@@ -67,17 +120,26 @@ export function BrandKitCard({ kit, websiteUrl, scrapedTitle }: BrandKitCardProp
           </div>
 
           {/* Colors */}
-          {(kit.primaryColor || kit.secondaryColor || kit.accentColor) && (
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-rocket-muted mb-1.5">
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="text-xs font-semibold uppercase tracking-wide text-rocket-muted">
                 <Palette className="inline h-3 w-3 mr-1" />
                 Brand Colors
+                {resolvedSource === "logo" && (
+                  <span className="ml-1.5 text-[10px] font-normal text-rocket-success normal-case">from logo</span>
+                )}
+                {resolvedSource === "css" && (
+                  <span className="ml-1.5 text-[10px] font-normal text-rocket-muted normal-case">from CSS</span>
+                )}
               </p>
+            </div>
+
+            {hasColors ? (
               <div className="flex gap-2 flex-wrap">
                 {[
-                  { label: "Primary", color: kit.primaryColor },
-                  { label: "Secondary", color: kit.secondaryColor },
-                  { label: "Accent", color: kit.accentColor },
+                  { label: "Primary",   color: colors.primary },
+                  { label: "Secondary", color: colors.secondary },
+                  { label: "Accent",    color: colors.accent },
                 ]
                   .filter((c) => c.color)
                   .map(({ label, color }) => (
@@ -90,8 +152,31 @@ export function BrandKitCard({ kit, websiteUrl, scrapedTitle }: BrandKitCardProp
                     </div>
                   ))}
               </div>
-            </div>
-          )}
+            ) : (
+              <p className="text-xs text-rocket-muted">No colors detected from CSS.</p>
+            )}
+
+            {/* Detect / re-detect button */}
+            {showDetectButton && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-2 h-7 text-xs"
+                onClick={handleDetectFromLogo}
+                disabled={detecting}
+              >
+                {detecting ? (
+                  <><Loader2 className="mr-1 h-3 w-3 animate-spin" />Detecting…</>
+                ) : (
+                  <><RefreshCw className="mr-1 h-3 w-3" />{hasColors ? "Re-detect from logo" : "Detect from logo"}</>
+                )}
+              </Button>
+            )}
+
+            {detectError && (
+              <p className="mt-1 text-xs text-rocket-danger">{detectError}</p>
+            )}
+          </div>
         </div>
 
         {/* Key phrases */}

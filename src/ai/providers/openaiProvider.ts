@@ -22,6 +22,12 @@ export interface ChatRequest {
   userPrompt: string;
 }
 
+export interface VisionRequest {
+  systemPrompt: string;
+  userPrompt: string;
+  imageUrl: string;
+}
+
 export class OpenAIProvider implements AIProvider {
   private client: OpenAI;
   private model: string;
@@ -50,6 +56,27 @@ export class OpenAIProvider implements AIProvider {
     } catch {
       throw new Error(`OpenAI response was not valid JSON: ${raw.slice(0, 200)}`);
     }
+  }
+
+  /** Call OpenAI with an image URL + text prompt (vision). Returns raw JSON string. */
+  async chatWithVision(request: VisionRequest): Promise<string> {
+    const completion = await this.client.chat.completions.create({
+      model: "gpt-4o",           // vision requires gpt-4o regardless of OPENAI_MODEL
+      temperature: 0.2,          // low temp — we want precise color values
+      max_tokens: 256,
+      messages: [
+        { role: "system", content: request.systemPrompt },
+        {
+          role: "user",
+          content: [
+            { type: "text",      text: request.userPrompt },
+            { type: "image_url", image_url: { url: request.imageUrl, detail: "low" } },
+          ],
+        },
+      ],
+    });
+    const raw = completion.choices[0]?.message?.content ?? "";
+    return raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
   }
 
   /** Call OpenAI with a mode-specific system + user prompt, return raw JSON string */
