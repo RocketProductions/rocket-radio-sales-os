@@ -37,6 +37,8 @@ interface LeadTimelineProps {
   pending:   AutomationRun[];
   completed: AutomationRun[];
   onUpdate?: () => void;
+  /** Client portal mode — hides stop/skip controls */
+  readOnly?: boolean;
 }
 
 // ── Icon helpers ──────────────────────────────────────────────────────────────
@@ -92,7 +94,7 @@ function formatFutureDate(iso: string) {
 
 // ── Main component ─────────────────────────────────────────────────────────────
 
-export function LeadTimeline({ leadId, events, pending, completed, onUpdate }: LeadTimelineProps) {
+export function LeadTimeline({ leadId, events, pending, completed, onUpdate, readOnly = false }: LeadTimelineProps) {
   const [stoppingAll, setStoppingAll]     = useState(false);
   const [skippingId, setSkippingId]       = useState<string | null>(null);
   const [localPending, setLocalPending]   = useState(pending);
@@ -141,18 +143,20 @@ export function LeadTimeline({ leadId, events, pending, completed, onUpdate }: L
             <p className="text-xs font-semibold uppercase tracking-wide text-rocket-muted">
               Scheduled ({localPending.length})
             </p>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 text-xs text-red-500 hover:text-red-600 hover:bg-red-50 px-2"
-              onClick={stopAll}
-              disabled={stoppingAll}
-            >
-              {stoppingAll
-                ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Stopping…</>
-                : <><Ban className="h-3 w-3 mr-1" />Stop all</>
-              }
-            </Button>
+            {!readOnly && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 text-xs text-red-500 hover:text-red-600 hover:bg-red-50 px-2"
+                onClick={stopAll}
+                disabled={stoppingAll}
+              >
+                {stoppingAll
+                  ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Stopping…</>
+                  : <><Ban className="h-3 w-3 mr-1" />Stop all</>
+                }
+              </Button>
+            )}
           </div>
           <div className="space-y-1.5">
             {localPending.map((run) => (
@@ -176,19 +180,21 @@ export function LeadTimeline({ leadId, events, pending, completed, onUpdate }: L
                     </p>
                   )}
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 shrink-0 text-xs text-slate-400 hover:text-red-500 px-1.5"
-                  onClick={() => skipStep(run.id)}
-                  disabled={skippingId === run.id}
-                  title="Skip this step"
-                >
-                  {skippingId === run.id
-                    ? <Loader2 className="h-3 w-3 animate-spin" />
-                    : <SkipForward className="h-3 w-3" />
-                  }
-                </Button>
+                {!readOnly && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 shrink-0 text-xs text-slate-400 hover:text-red-500 px-1.5"
+                    onClick={() => skipStep(run.id)}
+                    disabled={skippingId === run.id}
+                    title="Skip this step"
+                  >
+                    {skippingId === run.id
+                      ? <Loader2 className="h-3 w-3 animate-spin" />
+                      : <SkipForward className="h-3 w-3" />
+                    }
+                  </Button>
+                )}
               </div>
             ))}
           </div>
