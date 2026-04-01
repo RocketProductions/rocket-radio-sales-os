@@ -199,7 +199,7 @@ export function CampaignWizard() {
     } finally {
       setScanning(false);
     }
-  }, [form.website]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [form.website]);
 
   // ── Generic AI generation runner ─────────────────────────────────────────
   async function runGenerate<T>(
