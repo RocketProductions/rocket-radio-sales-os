@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { scrapeWebsite } from "@/lib/scraper";
+import { scrapeForIntake } from "@/lib/intakeScraper";
 import { buildBrandAnalysisPrompt, BrandKitSchema, type BrandKit } from "@/ai/modes/brandAnalysis";
+import { buildIntakeSuggestionsPrompt, INTAKE_SUGGESTIONS_SYSTEM_PROMPT, IntakeSuggestionsOutputSchema, type IntakeSuggestions } from "@/ai/modes/intakeSuggestions";
 import { OpenAIProvider } from "@/ai/providers/openaiProvider";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
@@ -13,8 +15,11 @@ export async function POST(req: Request) {
   try {
     const { url } = RequestSchema.parse(await req.json());
 
-    // 1. Scrape the website
-    const rawData = await scrapeWebsite(url);
+    // 1. Scrape the website — run homepage scrape + multi-page intake scrape in parallel
+    const [rawData, intakeScrapeData] = await Promise.all([
+      scrapeWebsite(url),
+      scrapeForIntake(url).catch(() => null), // non-fatal if subpages fail
+    ]);
 
     // 2. Analyze with OpenAI
     const provider = new OpenAIProvider();
@@ -36,7 +41,22 @@ Always respond with valid JSON matching the exact schema. No markdown fences.`;
 
     const kit: BrandKit = BrandKitSchema.parse(parsed);
 
-    // 3. Persist to brand_kits table
+    // 3. Run intake suggestions in parallel with DB save (non-fatal if it fails)
+    let intake: IntakeSuggestions | null = null;
+    if (intakeScrapeData) {
+      try {
+        const intakeRaw = await provider.chat({
+          systemPrompt: INTAKE_SUGGESTIONS_SYSTEM_PROMPT,
+          userPrompt: buildIntakeSuggestionsPrompt(intakeScrapeData.allText),
+        });
+        const intakeParsed = JSON.parse(intakeRaw);
+        intake = IntakeSuggestionsOutputSchema.parse(intakeParsed);
+      } catch {
+        // Non-fatal — intake suggestions are optional
+      }
+    }
+
+    // 4. Persist to brand_kits table
     const supabase = getSupabaseAdmin();
     const { data: savedKit, error } = await supabase
       .from("brand_kits")
@@ -78,6 +98,7 @@ Always respond with valid JSON matching the exact schema. No markdown fences.`;
       kit,
       id: (savedKit as { id?: string } | null)?.id ?? null,
       scrapedTitle: rawData.title,
+      intake,  // { industry, targetAudience, seasonality, confidence } or null
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";

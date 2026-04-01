@@ -111,6 +111,7 @@ export function CampaignWizard() {
   const [scrapedTitle, setScrapedTitle] = useState("");
   const [scanning, setScanning]       = useState(false);
   const [scanError, setScanError]     = useState("");
+  const [aiSuggestedFields, setAiSuggestedFields] = useState<string[]>([]); // fields pre-filled by scan
 
   // Per-asset state with DB sync
   const briefAsset    = useAsset<IntakeResult>("brief", sessionId);
@@ -155,6 +156,7 @@ export function CampaignWizard() {
     setScanError("");
     setBrandKit(null);
     setBrandKitId(null);
+    setAiSuggestedFields([]);
     try {
       const res = await fetch("/api/brand/scrape", {
         method: "POST",
@@ -166,15 +168,38 @@ export function CampaignWizard() {
       setBrandKit(json.kit as BrandKit);
       setBrandKitId(json.id ?? null);
       setScrapedTitle(json.scrapedTitle ?? "");
-      if (!form.industry && json.kit?.industry) {
-        setForm((prev) => ({ ...prev, industry: json.kit.industry }));
-      }
+
+      // Pre-fill intake fields from multi-page scan — only if field is currently empty
+      const suggested: string[] = [];
+      setForm((prev) => {
+        const next = { ...prev };
+        const intake = json.intake;
+        if (intake?.industry && !prev.industry) {
+          next.industry = intake.industry;
+          suggested.push("industry");
+        }
+        if (intake?.targetAudience && !prev.targetAudience) {
+          next.targetAudience = intake.targetAudience;
+          suggested.push("targetAudience");
+        }
+        if (intake?.seasonality && !prev.seasonality) {
+          next.seasonality = intake.seasonality;
+          suggested.push("seasonality");
+        }
+        // Fallback: use brand kit industry if intake didn't return one
+        if (!next.industry && json.kit?.industry) {
+          next.industry = json.kit.industry;
+          suggested.push("industry");
+        }
+        return next;
+      });
+      setAiSuggestedFields(suggested);
     } catch (err) {
       setScanError(err instanceof Error ? err.message : "Could not scan website");
     } finally {
       setScanning(false);
     }
-  }, [form.website, form.industry]);
+  }, [form.website]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Generic AI generation runner ─────────────────────────────────────────
   async function runGenerate<T>(
@@ -386,11 +411,17 @@ export function CampaignWizard() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium">Industry *</label>
+              <label className="mb-1 flex items-center gap-2 text-sm font-medium">
+                Industry *
+                {aiSuggestedFields.includes("industry") && (
+                  <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-600">✦ AI suggested</span>
+                )}
+              </label>
               <Input
                 value={form.industry}
-                onChange={(e) => update("industry", e.target.value)}
+                onChange={(e) => { update("industry", e.target.value); setAiSuggestedFields((p) => p.filter((f) => f !== "industry")); }}
                 placeholder="e.g. Home Services / Roofing"
+                className={aiSuggestedFields.includes("industry") ? "border-blue-300 bg-blue-50/30" : ""}
               />
             </div>
 
@@ -399,7 +430,7 @@ export function CampaignWizard() {
               <label className="mb-1 block text-sm font-medium">
                 Website
                 <span className="ml-2 text-xs font-normal text-rocket-muted">
-                  — scan to auto-detect brand voice, colors &amp; key phrases
+                  — scan to auto-fill industry, audience, seasonality &amp; brand voice
                 </span>
               </label>
               <div className="flex gap-2">
@@ -445,11 +476,17 @@ export function CampaignWizard() {
               </Select>
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium">Target Audience</label>
+              <label className="mb-1 flex items-center gap-2 text-sm font-medium">
+                Target Audience
+                {aiSuggestedFields.includes("targetAudience") && (
+                  <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-600">✦ AI suggested</span>
+                )}
+              </label>
               <Input
                 value={form.targetAudience}
-                onChange={(e) => update("targetAudience", e.target.value)}
+                onChange={(e) => { update("targetAudience", e.target.value); setAiSuggestedFields((p) => p.filter((f) => f !== "targetAudience")); }}
                 placeholder="e.g. Homeowners 35-65"
+                className={aiSuggestedFields.includes("targetAudience") ? "border-blue-300 bg-blue-50/30" : ""}
               />
             </div>
             <div>
@@ -461,11 +498,17 @@ export function CampaignWizard() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium">Seasonality</label>
+              <label className="mb-1 flex items-center gap-2 text-sm font-medium">
+                Seasonality
+                {aiSuggestedFields.includes("seasonality") && (
+                  <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-600">✦ AI suggested</span>
+                )}
+              </label>
               <Input
                 value={form.seasonality}
-                onChange={(e) => update("seasonality", e.target.value)}
+                onChange={(e) => { update("seasonality", e.target.value); setAiSuggestedFields((p) => p.filter((f) => f !== "seasonality")); }}
                 placeholder="e.g. Spring storm season"
+                className={aiSuggestedFields.includes("seasonality") ? "border-blue-300 bg-blue-50/30" : ""}
               />
             </div>
           </div>
