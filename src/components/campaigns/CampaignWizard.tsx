@@ -194,9 +194,19 @@ export function CampaignWizard({ initialData }: { initialData?: InitialSessionDa
 
       // Pre-fill intake fields from multi-page scan — only if field is currently empty
       const suggested: string[] = [];
+      let finalForm: IntakeForm | null = null;
       setForm((prev) => {
         const next = { ...prev };
         const intake = json.intake;
+
+        // Auto-fill business name from page title if blank
+        if (!prev.businessName && json.scrapedTitle) {
+          next.businessName = json.scrapedTitle;
+          // Also auto-generate slug from the scraped title
+          const auto = json.scrapedTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+          setSlug(auto);
+          suggested.push("businessName");
+        }
         if (intake?.industry && !prev.industry) {
           next.industry = intake.industry;
           suggested.push("industry");
@@ -214,15 +224,29 @@ export function CampaignWizard({ initialData }: { initialData?: InitialSessionDa
           next.industry = json.kit.industry;
           suggested.push("industry");
         }
+        finalForm = next;
         return next;
       });
       setAiSuggestedFields(suggested);
+
+      // Persist the intake form early so resume works even before brief generation
+      if (sessionId) {
+        try {
+          await fetch(`/api/campaigns/sessions/${sessionId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ intakeForm: finalForm }),
+          });
+        } catch {
+          // non-fatal — session will be saved again on brief generation
+        }
+      }
     } catch (err) {
       setScanError(err instanceof Error ? err.message : "Could not scan website");
     } finally {
       setScanning(false);
     }
-  }, [form.website]);
+  }, [form.website, sessionId]);
 
   // ── Generic AI generation runner ─────────────────────────────────────────
   async function runGenerate<T>(

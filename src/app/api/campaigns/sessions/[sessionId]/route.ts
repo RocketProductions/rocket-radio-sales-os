@@ -8,6 +8,7 @@ const PatchSchema = z.object({
   lpSlug:     z.string().optional(),
   lpLive:     z.boolean().optional(),
   assetCount: z.number().int().nonnegative().optional(),
+  intakeForm: z.record(z.string()).optional(),
 });
 
 // ── GET — load a single session with its assets and brand kit ─────────────────
@@ -171,6 +172,7 @@ export async function PATCH(
     if (body.lpSlug     !== undefined) updates.lp_slug     = body.lpSlug;
     if (body.lpLive     !== undefined) updates.lp_live     = body.lpLive;
     if (body.assetCount !== undefined) updates.asset_count = body.assetCount;
+    if (body.intakeForm !== undefined) updates.intake_form = body.intakeForm;
 
     const { error: updateError } = await supabase
       .from("campaign_sessions")

@@ -55,7 +55,15 @@ async function loadSession(sessionId: string, tenantId: string, userId: string, 
       const a = latestByType[type];
       if (!a) return null;
       const data = (a.edited_content ?? a.content) as T;
-      return { data, dbId: a.id, status: a.status as AssetStatus };
+      // DB stores "draft" for freshly-saved assets; map to "saved" for the UI
+      const statusMap: Record<string, AssetStatus> = {
+        draft:    "saved",
+        saved:    "saved",
+        edited:   "edited",
+        approved: "approved",
+      };
+      const status: AssetStatus = statusMap[a.status] ?? "saved";
+      return { data, dbId: a.id, status };
     }
 
     // Fetch brand kit
