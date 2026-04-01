@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useId } from "react";
+import { useState, useCallback, useId, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -136,6 +136,9 @@ export function CampaignWizard() {
   const [sessionRegistered, setSessionRegistered]   = useState(false);
   const [brandLimitError, setBrandLimitError]       = useState("");
 
+  // Ref for scrolling back to intake form when editing brief
+  const intakeCardRef = useRef<HTMLDivElement>(null);
+
   // The live brief (from briefAsset.data or editedContent)
   const brief = briefAsset.data;
 
@@ -266,6 +269,7 @@ export function CampaignWizard() {
         businessName: form.businessName,
         brandKitId: bkId ?? undefined,
       });
+      briefAsset.setEditMode(false);
       // Register session on first asset save
       if (!sessionRegistered) {
         await registerSession();
@@ -393,7 +397,7 @@ export function CampaignWizard() {
     <div className="space-y-6">
 
       {/* ── Intake form ── */}
-      <Card>
+      <Card ref={intakeCardRef} className={briefAsset.editMode ? "ring-2 ring-rocket-blue" : ""}>
         <CardHeader>
           <CardTitle>Client Intake</CardTitle>
           <CardDescription>
@@ -535,6 +539,8 @@ export function CampaignWizard() {
           <Button onClick={handleBrief} disabled={isBusy || !canGenerate || !!brandLimitError} className="w-full md:w-auto">
             {generatingKey === "brief" ? (
               <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Generating Brief...</>
+            ) : briefAsset.editMode ? (
+              <><Sparkles className="mr-2 h-4 w-4" />Regenerate Brief</>
             ) : (
               <><Sparkles className="mr-2 h-4 w-4" />Generate Campaign Brief</>
             )}
@@ -598,10 +604,13 @@ export function CampaignWizard() {
             <CardContent className="pt-4">
               <AssetToolbar
                 status={briefAsset.status}
-                editMode={false}
-                onEdit={() => {}}
-                onCancelEdit={() => {}}
-                onSaveEdits={() => {}}
+                editMode={briefAsset.editMode}
+                onEdit={() => {
+                  briefAsset.setEditMode(true);
+                  intakeCardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+                onCancelEdit={() => briefAsset.setEditMode(false)}
+                onSaveEdits={handleBrief}
                 onApprove={briefAsset.approve}
               />
             </CardContent>
