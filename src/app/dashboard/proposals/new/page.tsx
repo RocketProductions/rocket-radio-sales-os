@@ -109,6 +109,7 @@ export default async function NewProposalPage({ searchParams }: PageProps) {
 
   return (
     <NewProposalClient
+      key={selectedSessionId || "__empty__"}
       sessions={sessions}
       selectedSessionId={selectedSessionId}
       prefilled={prefilled}
