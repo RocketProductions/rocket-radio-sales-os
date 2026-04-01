@@ -1,9 +1,10 @@
 import { headers } from "next/headers";
+import Link from "next/link";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LeadStatusBadge } from "@/components/leads/LeadStatusBadge";
 import { Badge } from "@/components/ui/badge";
-import { UserCheck } from "lucide-react";
+import { UserCheck, ChevronRight } from "lucide-react";
 import { LeadStatusUpdater } from "@/components/leads/LeadStatusUpdater";
 
 export const dynamic = "force-dynamic";
@@ -111,16 +112,23 @@ export default async function LeadsPage() {
               {leads.map((lead) => (
                 <div
                   key={lead.id}
-                  className="flex items-center justify-between rounded-md border border-rocket-border p-3 gap-3"
+                  className="flex items-center justify-between rounded-md border border-rocket-border p-3 gap-3 hover:bg-slate-50 transition-colors group"
                 >
-                  <div className="min-w-0">
-                    <p className="font-medium text-sm text-rocket-dark truncate">
-                      {lead.name || "Unknown"}
-                    </p>
-                    <p className="text-xs text-rocket-muted truncate">
-                      {lead.email ?? lead.phone ?? "No contact info"}
-                    </p>
-                  </div>
+                  {/* Clickable name/contact area → detail page */}
+                  <Link
+                    href={`/dashboard/leads/${lead.id}`}
+                    className="min-w-0 flex-1 flex items-center gap-2"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm text-rocket-dark truncate group-hover:text-rocket-blue transition-colors">
+                        {lead.name || "Unknown"}
+                      </p>
+                      <p className="text-xs text-rocket-muted truncate">
+                        {lead.email ?? lead.phone ?? "No contact info"}
+                      </p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-rocket-blue shrink-0 transition-colors" />
+                  </Link>
 
                   <div className="flex shrink-0 items-center gap-2">
                     {lead.landing_pages?.business_name && (

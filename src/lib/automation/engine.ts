@@ -136,7 +136,7 @@ export async function processPendingAutomations(): Promise<number> {
     }
 
     // Skip if lead is already closed or lost
-    if (lead.status === "closed" || lead.status === "lost") {
+    if (lead.status === "booked" || lead.status === "closed" || lead.status === "lost") {
       await prisma.automationRun.update({
         where: { id: run.id },
         data: { status: "skipped", executedAt: new Date(), errorMessage: `Lead status: ${lead.status}` },
