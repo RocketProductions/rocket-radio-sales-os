@@ -58,7 +58,7 @@ export default async function NewProposalPage({ searchParams }: PageProps) {
       .from("campaign_assets")
       .select("id, asset_type, content, edited_content")
       .eq("session_id", sessionParam)
-      .in("asset_type", ["client-intake", "radio-script", "funnel-copy", "follow-up-sequence"])
+      .in("asset_type", ["brief", "radio-script", "funnel-copy", "follow-up-sequence"])
       .order("created_at", { ascending: false });
 
     // Keep latest per type
@@ -69,7 +69,7 @@ export default async function NewProposalPage({ searchParams }: PageProps) {
       if (!latest[a.asset_type]) latest[a.asset_type] = a;
     }
 
-    const intake    = pickContent(latest["client-intake"] ?? null);
+    const intake    = pickContent(latest["brief"] ?? null);
     const script    = pickContent(latest["radio-script"] ?? null);
     const funnel    = pickContent(latest["funnel-copy"] ?? null);
     const followUp  = pickContent(latest["follow-up-sequence"] ?? null);
