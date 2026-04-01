@@ -68,10 +68,12 @@ async function loadSession(sessionId: string, tenantId: string, userId: string, 
 
     // Fetch brand kit
     let brandKit: BrandKit | null = null;
+    let bkTrackingPhone = "";
+    let bkSmsKeyword = "";
     if (s.brand_kit_id) {
       const { data: kit } = await supabase
         .from("brand_kits")
-        .select("business_description, tagline, logo_url, primary_color, secondary_color, accent_color, font_headline, font_body, tone_words, key_phrases, target_audience, unique_value_prop, industry")
+        .select("business_description, tagline, logo_url, primary_color, secondary_color, accent_color, font_headline, font_body, tone_words, key_phrases, target_audience, unique_value_prop, industry, tracking_phone, meta_pixel_id, sms_keyword")
         .eq("id", s.brand_kit_id)
         .single();
 
@@ -82,6 +84,7 @@ async function loadSession(sessionId: string, tenantId: string, userId: string, 
           font_headline: string | null; font_body: string | null;
           tone_words: string[]; key_phrases: string[];
           target_audience: string; unique_value_prop: string; industry: string;
+          tracking_phone: string | null; meta_pixel_id: string | null; sms_keyword: string | null;
         };
         brandKit = {
           businessDescription: k.business_description,
@@ -97,6 +100,8 @@ async function loadSession(sessionId: string, tenantId: string, userId: string, 
           uniqueValueProp:     k.unique_value_prop,
           industry:            k.industry,
         };
+        bkTrackingPhone = k.tracking_phone ?? "";
+        bkSmsKeyword = k.sms_keyword ?? "";
       }
     }
 
@@ -109,6 +114,8 @@ async function loadSession(sessionId: string, tenantId: string, userId: string, 
       businessName: s.business_name,
       brandKit,
       brandKitId:   s.brand_kit_id,
+      trackingPhone: bkTrackingPhone,
+      smsKeyword:    bkSmsKeyword,
       intakeForm:   s.intake_form ?? {},
       brief:        toSeed("brief"),
       script:       toSeed("radio-script"),

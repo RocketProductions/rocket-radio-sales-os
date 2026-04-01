@@ -85,6 +85,8 @@ export interface InitialSessionData {
   followUp: AssetSeed<FollowUpResult> | null;
   lpSlug:   string | null;
   liveUrl:  string | null;
+  trackingPhone?: string;
+  smsKeyword?: string;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -133,6 +135,9 @@ export function CampaignWizard({ initialData }: { initialData?: InitialSessionDa
   const [brandKitId, setBrandKitId]     = useState<string | null>(initialData?.brandKitId ?? null);
   const [scrapedTitle, setScrapedTitle] = useState("");
   const [colorSource, setColorSource]   = useState<string | null>(null);
+  // Campaign tracking fields from brand kit (DB columns, not in BrandKit type)
+  const [trackingPhone, setTrackingPhone] = useState(initialData?.trackingPhone ?? "");
+  const [smsKeyword, setSmsKeyword]       = useState(initialData?.smsKeyword ?? "");
   const [scanning, setScanning]         = useState(false);
   const [scanError, setScanError]       = useState("");
   const [aiSuggestedFields, setAiSuggestedFields] = useState<string[]>([]);
@@ -200,6 +205,9 @@ export function CampaignWizard({ initialData }: { initialData?: InitialSessionDa
       setBrandKitId(json.id ?? null);
       setScrapedTitle(json.scrapedTitle ?? "");
       setColorSource(json.colorSource ?? null);
+      // Campaign tracking fields from brand kit DB record
+      if (json.trackingPhone) setTrackingPhone(json.trackingPhone);
+      if (json.smsKeyword) setSmsKeyword(json.smsKeyword);
 
       // Pre-fill intake fields from multi-page scan — only if field is currently empty
       const suggested: string[] = [];
@@ -352,6 +360,10 @@ export function CampaignWizard({ initialData }: { initialData?: InitialSessionDa
       // Ground truth — never let AI guess these
       website:        form.website  || undefined,
       phone:          form.phone    || undefined,
+      // Campaign tracking — from brand kit
+      trackingPhone:  trackingPhone || undefined,
+      smsKeyword:     smsKeyword    || undefined,
+      smsNumber:      process.env.NEXT_PUBLIC_SMS_NUMBER || undefined,
       // Brief context flows downstream
       bigIdea:        brief?.bigIdea,
       campaignType:   brief?.campaignType,

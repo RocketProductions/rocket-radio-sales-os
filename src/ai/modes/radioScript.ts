@@ -21,6 +21,10 @@ export const RadioScriptInputSchema = z.object({
   // Contact info — injected as ground truth so AI never guesses
   website:          z.string().optional(),
   phone:            z.string().optional(),
+  // Campaign tracking — from brand kit
+  trackingPhone:    z.string().optional(), // dedicated call tracking number
+  smsKeyword:       z.string().optional(), // e.g. "ROOF" → "Text ROOF to 55555"
+  smsNumber:        z.string().optional(), // the Twilio number for keyword texts
   // Routing (stripped before AI call — used by generate route only)
   sessionId:        z.string().optional(),
 });
@@ -50,6 +54,10 @@ export function buildScriptUserPrompt(input: RadioScriptInput): string {
   const groundTruth: string[] = [];
   if (input.website) groundTruth.push(`Website (use EXACTLY as written, no https:// or www): ${radioUrl(input.website)}`);
   if (input.phone)   groundTruth.push(`Phone (use EXACTLY as written): ${input.phone}`);
+  if (input.trackingPhone) groundTruth.push(`Call tracking number (use EXACTLY): ${input.trackingPhone}`);
+  if (input.smsKeyword && input.smsNumber) {
+    groundTruth.push(`Text keyword CTA (use EXACTLY): "Text ${input.smsKeyword} to ${input.smsNumber}"`);
+  }
 
   const lines = [
     `Business: ${input.businessName} (${input.industry})`,
@@ -61,7 +69,7 @@ export function buildScriptUserPrompt(input: RadioScriptInput): string {
     input.campaignType  ? `Campaign Type: ${input.campaignType.replace(/_/g, " ")}` : null,
     input.offerScore    ? `Offer Score: ${input.offerScore}/10` : null,
     input.brandContext  ? `\n${input.brandContext}`             : null,
-    groundTruth.length  ? `\nCRITICAL — Use these contact details verbatim in the CTA:\n${groundTruth.join("\n")}` : null,
+    groundTruth.length  ? `\nCRITICAL — Use these contact details verbatim in the CTA:\n${groundTruth.join("\n")}${input.smsKeyword ? "\nPREFERRED CTA: The text keyword is the strongest radio CTA. Lead with it. Listeners can text while driving — they can't type a URL." : ""}` : null,
   ].filter(Boolean).join("\n");
 
   const frameworkInstruction = input.framework
