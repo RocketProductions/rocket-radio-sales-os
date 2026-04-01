@@ -54,7 +54,7 @@ export function DashboardShell({ userRole, brandName, children }: DashboardShell
       {/* ── Main ─────────────────────────────────────────────────────────── */}
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <TopBar onMenuClick={() => setMobileOpen(true)} />
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto px-6 py-8">
           {children}
         </main>
       </div>

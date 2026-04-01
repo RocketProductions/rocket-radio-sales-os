@@ -25,7 +25,7 @@ const FILTER_TABS: { value: CategoryFilter; label: string }[] = [
   { value: "note",     label: "Notes" },
 ];
 
-export function AdminAssetLibrary({ initialAssets, tenantId }: Props) {
+export function AdminAssetLibrary({ initialAssets }: Props) {
   const [assets, setAssets]               = useState<UploadedAsset[]>(initialAssets);
   const [category, setCategory]           = useState<CategoryFilter>("all");
   const [showNoteModal, setShowNoteModal] = useState(false);

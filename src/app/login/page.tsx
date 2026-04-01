@@ -35,7 +35,6 @@ function LoginForm() {
         return;
       }
 
-      // Redirect based on role
       const role = data.data?.user.role ?? "";
       const isInternalUser = ["admin", "manager", "executive", "rep", "super_admin"].includes(role);
 
@@ -53,21 +52,23 @@ function LoginForm() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-rocket-bg px-4">
-      <div className="w-full max-w-sm">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 via-white to-blue-50/40 px-4">
+      <div className="w-full max-w-sm animate-fade-in-up">
         {/* Logo */}
-        <div className="mb-8 flex flex-col items-center gap-2 text-center">
-          <div className="flex items-center gap-2">
-            <Rocket className="h-8 w-8 text-rocket-accent" />
-            <span className="text-2xl font-bold text-rocket-dark">Rocket Radio</span>
+        <div className="mb-8 flex flex-col items-center gap-3 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rocket-accent/10 shadow-sm">
+            <Rocket className="h-6 w-6 text-rocket-accent" />
           </div>
-          <p className="text-sm text-rocket-muted">Sign in to your account</p>
+          <div>
+            <h1 className="text-xl font-semibold tracking-tight text-rocket-dark">Rocket Radio</h1>
+            <p className="mt-1 text-sm text-rocket-muted">Sign in to your account</p>
+          </div>
         </div>
 
         {/* Form */}
         <form
           onSubmit={handleSubmit}
-          className="space-y-4 rounded-xl border border-rocket-border bg-white p-8 shadow-sm"
+          className="space-y-4 rounded-2xl border border-rocket-border bg-white p-8 shadow-lg shadow-slate-200/50"
         >
           <div>
             <label className="mb-1.5 block text-sm font-medium text-rocket-dark">
@@ -98,16 +99,17 @@ function LoginForm() {
           </div>
 
           {error && (
-            <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">
+            <div className="flex items-center gap-2 rounded-lg bg-red-50 px-3 py-2.5 text-sm text-red-600">
+              <div className="h-1.5 w-1.5 rounded-full bg-red-400 shrink-0" />
               {error}
-            </p>
+            </div>
           )}
 
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Signing in…
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Signing in...
               </>
             ) : (
               "Sign in"
@@ -115,9 +117,9 @@ function LoginForm() {
           </Button>
         </form>
 
-        <p className="mt-6 text-center text-xs text-rocket-muted">
+        <p className="mt-8 text-center text-xs text-rocket-muted">
           Reps:{" "}
-          <a href="/onboarding" className="text-rocket-accent hover:underline">
+          <a href="/onboarding" className="font-medium text-rocket-blue hover:underline">
             Set up a new client account
           </a>
         </p>

@@ -181,7 +181,7 @@ export function LeadTimeline({ leadId, events, pending, completed, onUpdate, rea
                   </div>
                   {run.preview && (
                     <p className="mt-0.5 text-xs text-rocket-muted line-clamp-2 italic">
-                      "{run.preview.slice(0, 120)}{run.preview.length > 120 ? "…" : ""}"
+                      &ldquo;{run.preview.slice(0, 120)}{run.preview.length > 120 ? "…" : ""}&rdquo;
                     </p>
                   )}
                 </div>
@@ -277,7 +277,7 @@ export function LeadTimeline({ leadId, events, pending, completed, onUpdate, rea
                     {/* Show message preview for sent automation runs */}
                     {item.type === "run" && item.data.status === "sent" && item.data.preview && (
                       <p className="mt-0.5 text-xs text-rocket-muted italic line-clamp-2">
-                        "{item.data.preview.slice(0, 120)}{item.data.preview.length > 120 ? "…" : ""}"
+                        &ldquo;{item.data.preview.slice(0, 120)}{item.data.preview.length > 120 ? "…" : ""}&rdquo;
                       </p>
                     )}
                   </div>

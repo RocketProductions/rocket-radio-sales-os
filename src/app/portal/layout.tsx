@@ -26,16 +26,18 @@ export default async function PortalLayout({ children }: { children: React.React
       )}
 
       <div className="min-h-screen bg-rocket-bg">
-        {/* Simple header */}
-        <header className="border-b border-rocket-border bg-white">
-          <div className="mx-auto flex h-16 max-w-4xl items-center justify-between px-6">
-            <div className="flex items-center gap-2">
-              <Rocket className="h-5 w-5 text-rocket-accent" />
-              <span className="font-semibold text-rocket-dark">Your Leads</span>
+        {/* Header */}
+        <header className="sticky top-0 z-10 border-b border-rocket-border bg-white/80 backdrop-blur-md">
+          <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-6">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rocket-accent/10">
+                <Rocket className="h-4 w-4 text-rocket-accent" />
+              </div>
+              <span className="text-sm font-semibold text-rocket-dark">Your Leads</span>
             </div>
             <div className="flex items-center gap-4">
               {!branding.hideRocketBranding && (
-                <span className="text-sm text-rocket-muted hidden sm:block">
+                <span className="text-xs text-rocket-muted hidden sm:block">
                   Powered by {branding.brandName}
                 </span>
               )}
@@ -45,7 +47,7 @@ export default async function PortalLayout({ children }: { children: React.React
         </header>
 
         {/* Content */}
-        <main className="mx-auto max-w-4xl px-6 py-8">
+        <main className="mx-auto max-w-5xl px-6 py-8">
           {children}
         </main>
       </div>

@@ -14,7 +14,7 @@ async function getFiles(dir) {
 }
 
 // Next.js route segment config exports that are expected to appear in multiple page files
-const NEXTJS_ROUTE_CONFIGS = new Set(["dynamic", "revalidate", "runtime", "preferredRegion", "maxDuration", "fetchCache", "dynamicParams", "generateStaticParams"]);
+const NEXTJS_ROUTE_CONFIGS = new Set(["dynamic", "revalidate", "runtime", "preferredRegion", "maxDuration", "fetchCache", "dynamicParams", "generateStaticParams", "metadata", "generateMetadata"]);
 
 async function getExports(file) {
   const content = await readFile(file, "utf8");

@@ -5,8 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LeadStatusBadge } from "@/components/leads/LeadStatusBadge";
 import { LeadStatusUpdater } from "@/components/leads/LeadStatusUpdater";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/ui/page-header";
 import {
-  Users, Megaphone, UserCheck, TrendingUp, ChevronRight, CalendarCheck,
+  Users, Megaphone, UserCheck, ChevronRight, CalendarCheck, Inbox, Plus,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -32,7 +33,6 @@ export default async function DashboardPage() {
 
   const supabase = getSupabaseAdmin();
 
-  // Pull recent leads with landing page context
   const { data: rawLeads } = await supabase
     .from("lp_leads")
     .select(`
@@ -44,7 +44,6 @@ export default async function DashboardPage() {
 
   let leads = (rawLeads ?? []) as unknown as LpLead[];
 
-  // Tenant filter (same pattern as leads page)
   if (!isSuperAdmin && tenantId && leads.length > 0) {
     const sessionIds = leads
       .map((l) => l.landing_pages?.session_id)
@@ -66,7 +65,6 @@ export default async function DashboardPage() {
     }
   }
 
-  // Pull active campaign sessions for this tenant
   const campaignQuery = supabase
     .from("campaign_sessions")
     .select("id, business_name, status, created_at")
@@ -82,7 +80,6 @@ export default async function DashboardPage() {
     (c: { status: string }) => c.status === "active" || c.status === "published",
   );
 
-  // Compute stats
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
   const leadsThisMonth = leads.filter((l) => l.created_at >= startOfMonth);
@@ -91,113 +88,92 @@ export default async function DashboardPage() {
     activeCampaigns: activeCampaigns.length,
     totalLeads: leadsThisMonth.length,
     clients: new Set(
-      leads
-        .map((l) => l.landing_pages?.business_name)
-        .filter(Boolean),
+      leads.map((l) => l.landing_pages?.business_name).filter(Boolean),
     ).size,
     booked: leads.filter((l) => l.status === "booked" || l.status === "closed").length,
   };
 
   const recentLeads = leads.slice(0, 12);
 
+  const statCards = [
+    { label: "Active Campaigns", value: stats.activeCampaigns, sub: `${campaigns.length} total`,                                        icon: Megaphone,     color: "bg-rocket-blue" },
+    { label: "Leads This Month", value: stats.totalLeads,      sub: `${leads.length} all time`,                                          icon: UserCheck,     color: "bg-indigo-500" },
+    { label: "Clients",          value: stats.clients,         sub: "With leads",                                                        icon: Users,         color: "bg-rocket-success" },
+    { label: "Booked / Closed",  value: stats.booked,          sub: leads.length > 0 ? `${Math.round((stats.booked / leads.length) * 100)}% close rate` : "No leads yet", icon: CalendarCheck, color: "bg-rocket-accent" },
+  ];
+
+  // Funnel data
+  const funnel = ["new", "contacted", "booked", "closed"].map((status) => ({
+    status,
+    count: leads.filter((l) => l.status === status).length,
+    pct: leads.length > 0 ? Math.round((leads.filter((l) => l.status === status).length / leads.length) * 100) : 0,
+  }));
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Dashboard</h1>
-        <p className="text-rocket-muted">
-          Your campaigns, leads, and client activity at a glance.
-        </p>
-      </div>
+    <div className="space-y-8">
+      <PageHeader
+        title="Dashboard"
+        subtitle="Your campaigns, leads, and client activity at a glance."
+      />
 
       {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-rocket-muted">Active Campaigns</CardTitle>
-            <Megaphone className="h-4 w-4 text-rocket-muted" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{stats.activeCampaigns}</div>
-            <p className="text-xs text-rocket-muted">
-              {campaigns.length} total
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-rocket-muted">Leads This Month</CardTitle>
-            <UserCheck className="h-4 w-4 text-rocket-muted" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{stats.totalLeads}</div>
-            <p className="text-xs text-rocket-muted">
-              {leads.length} all time
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-rocket-muted">Clients</CardTitle>
-            <Users className="h-4 w-4 text-rocket-muted" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{stats.clients}</div>
-            <p className="text-xs text-rocket-muted">With leads</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-rocket-muted">Booked / Closed</CardTitle>
-            <CalendarCheck className="h-4 w-4 text-rocket-muted" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{stats.booked}</div>
-            <p className="text-xs text-rocket-muted">
-              {leads.length > 0
-                ? `${Math.round((stats.booked / leads.length) * 100)}% close rate`
-                : "No leads yet"}
-            </p>
-          </CardContent>
-        </Card>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 stagger-children">
+        {statCards.map((s) => (
+          <Card key={s.label} className="relative overflow-hidden">
+            <div className={`absolute inset-y-0 left-0 w-1 ${s.color}`} />
+            <CardHeader className="flex flex-row items-center justify-between pb-2 pl-5">
+              <CardTitle className="text-xs font-medium uppercase tracking-wide text-rocket-muted">
+                {s.label}
+              </CardTitle>
+              <s.icon className="h-4 w-4 text-rocket-muted/60" />
+            </CardHeader>
+            <CardContent className="pl-5">
+              <div className="text-3xl font-bold tracking-tight">{s.value}</div>
+              <p className="mt-0.5 text-xs text-rocket-muted">{s.sub}</p>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-5">
         {/* Recent Leads */}
-        <Card>
+        <Card className="lg:col-span-3 animate-fade-in-up">
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-lg">Recent Leads</CardTitle>
+            <CardTitle className="text-base font-semibold">Recent Leads</CardTitle>
             <Link
               href="/dashboard/leads"
-              className="text-xs text-rocket-muted hover:text-rocket-blue transition-colors"
+              className="text-xs font-medium text-rocket-muted hover:text-rocket-blue transition-colors"
             >
-              View all →
+              View all &rarr;
             </Link>
           </CardHeader>
           <CardContent>
             {recentLeads.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-10 text-center">
-                <UserCheck className="mb-3 h-10 w-10 text-rocket-border" />
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-rocket-border/40">
+                  <Inbox className="h-6 w-6 text-rocket-muted/60" />
+                </div>
                 <p className="text-sm font-medium">No leads yet</p>
-                <p className="mt-1 text-xs text-rocket-muted">
+                <p className="mt-1 max-w-[240px] text-xs text-rocket-muted">
                   Leads appear here when someone fills out a landing page form.
                 </p>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-1">
                 {recentLeads.map((lead) => (
                   <div
                     key={lead.id}
-                    className="flex items-center justify-between rounded-md border border-rocket-border p-3 gap-3 hover:bg-slate-50 transition-colors group"
+                    className="group flex items-center justify-between rounded-lg border border-transparent p-3 gap-3 transition-all duration-150 hover:border-rocket-border hover:bg-rocket-bg/50"
                   >
                     <Link
                       href={`/dashboard/leads/${lead.id}`}
-                      className="min-w-0 flex-1 flex items-center gap-2"
+                      className="min-w-0 flex-1 flex items-center gap-3"
                     >
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rocket-blue/10 text-xs font-semibold text-rocket-blue">
+                        {(lead.name ?? "?")[0].toUpperCase()}
+                      </div>
                       <div className="min-w-0">
-                        <p className="font-medium text-sm text-rocket-dark truncate group-hover:text-rocket-blue transition-colors">
+                        <p className="text-sm font-medium text-rocket-dark truncate group-hover:text-rocket-blue transition-colors">
                           {lead.name ?? "Unknown"}
                         </p>
                         <p className="text-xs text-rocket-muted truncate">
@@ -205,7 +181,7 @@ export default async function DashboardPage() {
                           {new Date(lead.created_at).toLocaleDateString()}
                         </p>
                       </div>
-                      <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-rocket-blue shrink-0 transition-colors" />
+                      <ChevronRight className="h-3.5 w-3.5 text-rocket-muted/40 opacity-0 group-hover:opacity-100 shrink-0 transition-opacity" />
                     </Link>
                     <div className="flex shrink-0 items-center gap-2">
                       <LeadStatusBadge status={lead.status} />
@@ -219,39 +195,42 @@ export default async function DashboardPage() {
         </Card>
 
         {/* Campaigns */}
-        <Card>
+        <Card className="lg:col-span-2 animate-fade-in-up" style={{ animationDelay: "100ms" }}>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-lg">Campaigns</CardTitle>
+            <CardTitle className="text-base font-semibold">Campaigns</CardTitle>
             <Link
               href="/dashboard/campaigns"
-              className="text-xs text-rocket-muted hover:text-rocket-blue transition-colors"
+              className="text-xs font-medium text-rocket-muted hover:text-rocket-blue transition-colors"
             >
-              View all →
+              View all &rarr;
             </Link>
           </CardHeader>
           <CardContent>
             {campaigns.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-10 text-center">
-                <Megaphone className="mb-3 h-10 w-10 text-rocket-border" />
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-rocket-border/40">
+                  <Megaphone className="h-6 w-6 text-rocket-muted/60" />
+                </div>
                 <p className="text-sm font-medium">No campaigns yet</p>
-                <p className="mt-1 text-xs text-rocket-muted">
+                <p className="mt-1 max-w-[200px] text-xs text-rocket-muted">
                   Create your first campaign to start generating leads.
                 </p>
-                <Link href="/dashboard/campaigns/new">
-                  <Badge variant="outline" className="mt-3 cursor-pointer hover:bg-slate-50">
-                    + New Campaign
-                  </Badge>
+                <Link
+                  href="/dashboard/campaigns/new"
+                  className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-rocket-border px-3 py-1.5 text-xs font-medium text-rocket-dark hover:bg-rocket-bg transition-colors"
+                >
+                  <Plus className="h-3 w-3" /> New Campaign
                 </Link>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-1">
                 {campaigns.slice(0, 10).map((c: { id: string; business_name: string; status: string; created_at: string }) => (
                   <div
                     key={c.id}
-                    className="flex items-center justify-between rounded-md border border-rocket-border p-3"
+                    className="flex items-center justify-between rounded-lg border border-transparent p-3 transition-all duration-150 hover:border-rocket-border hover:bg-rocket-bg/50"
                   >
                     <div className="min-w-0">
-                      <p className="font-medium text-sm text-rocket-dark truncate">
+                      <p className="text-sm font-medium text-rocket-dark truncate">
                         {c.business_name}
                       </p>
                       <p className="text-xs text-rocket-muted">
@@ -276,25 +255,21 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      {/* Outcome summary */}
+      {/* Lead Outcomes funnel */}
       {leads.length > 0 && (
-        <Card>
+        <Card className="animate-fade-in-up" style={{ animationDelay: "200ms" }}>
           <CardHeader>
-            <CardTitle className="text-lg">Lead Outcomes</CardTitle>
+            <CardTitle className="text-base font-semibold">Lead Outcomes</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {(["new", "contacted", "booked", "closed"] as const).map((status) => {
-                const count = leads.filter((l) => l.status === status).length;
-                const pct = leads.length > 0 ? Math.round((count / leads.length) * 100) : 0;
-                return (
-                  <div key={status} className="rounded-lg border border-rocket-border p-3 text-center">
-                    <LeadStatusBadge status={status} />
-                    <p className="mt-2 text-2xl font-bold">{count}</p>
-                    <p className="text-xs text-rocket-muted">{pct}%</p>
-                  </div>
-                );
-              })}
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 stagger-children">
+              {funnel.map((f) => (
+                <div key={f.status} className="rounded-xl border border-rocket-border p-4 text-center transition-colors hover:bg-rocket-bg/50">
+                  <LeadStatusBadge status={f.status} />
+                  <p className="mt-3 text-3xl font-bold tracking-tight">{f.count}</p>
+                  <p className="mt-0.5 text-xs text-rocket-muted">{f.pct}%</p>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>

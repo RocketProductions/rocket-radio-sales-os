@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme {
-  /* Rocket Radio Sales brand colors */
+  /* Brand colors */
   --color-rocket-blue: #1e40af;
   --color-rocket-dark: #0f172a;
   --color-rocket-accent: #f97316;
@@ -12,15 +12,70 @@
   --color-rocket-card: #ffffff;
   --color-rocket-border: #e2e8f0;
 
-  /* Spacing */
+  /* Radii */
   --radius-lg: 0.75rem;
   --radius-md: 0.5rem;
   --radius-sm: 0.25rem;
+
+  /* Animation */
+  --animate-fade-in: fade-in 0.4s ease-out both;
+  --animate-fade-in-up: fade-in-up 0.45s ease-out both;
+  --animate-slide-in-left: slide-in-left 0.25s ease-out both;
 }
+
+/* Keyframes */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-in-left {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* Stagger children: apply .stagger-children to parent */
+.stagger-children > * {
+  animation: fade-in-up 0.4s ease-out both;
+}
+.stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-children > *:nth-child(2) { animation-delay: 60ms; }
+.stagger-children > *:nth-child(3) { animation-delay: 120ms; }
+.stagger-children > *:nth-child(4) { animation-delay: 180ms; }
+.stagger-children > *:nth-child(5) { animation-delay: 240ms; }
+.stagger-children > *:nth-child(6) { animation-delay: 300ms; }
+.stagger-children > *:nth-child(7) { animation-delay: 360ms; }
+.stagger-children > *:nth-child(8) { animation-delay: 420ms; }
 
 /* Base styles */
 body {
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
   background-color: var(--color-rocket-bg);
   color: var(--color-rocket-dark);
+}
+
+/* Smooth scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-rocket-border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-rocket-muted);
+}
+
+/* Print utilities (existing) */
+@media print {
+  .print\:hidden { display: none !important; }
+  .hidden.print\:block { display: block !important; }
 }

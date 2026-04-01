@@ -67,44 +67,43 @@ export function Sidebar({
   return (
     <aside
       className={cn(
-        // Base layout
         "flex h-screen flex-col border-r border-rocket-border bg-white",
-        // Mobile: fixed drawer that slides in/out
-        "fixed inset-y-0 left-0 z-30 transition-transform duration-200 ease-in-out",
-        // Desktop: sticky in flow, no slide transition
-        "md:sticky md:top-0 md:z-auto md:transition-none md:translate-x-0",
-        // Mobile visibility
-        mobileOpen ? "translate-x-0 shadow-xl" : "-translate-x-full",
-        // Width: full or collapsed icon rail (desktop only)
-        collapsed ? "w-64 md:w-14" : "w-64",
+        "fixed inset-y-0 left-0 z-30 transition-all duration-200 ease-in-out",
+        "md:sticky md:top-0 md:z-auto md:translate-x-0",
+        mobileOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full",
+        collapsed ? "w-64 md:w-[60px]" : "w-64",
       )}
     >
-      {/* ── Logo ─────────────────────────────────────────────────────────── */}
+      {/* Logo */}
       <div className={cn(
-        "flex h-16 shrink-0 items-center border-b border-rocket-border",
-        collapsed ? "px-0 justify-center" : "px-5 gap-2"
+        "flex h-14 shrink-0 items-center border-b border-rocket-border",
+        collapsed ? "px-0 justify-center" : "px-4 gap-2.5"
       )}>
-        <Rocket className="h-6 w-6 shrink-0 text-rocket-accent" />
+        <div className={cn(
+          "flex items-center justify-center rounded-lg bg-rocket-accent/10",
+          collapsed ? "h-8 w-8" : "h-8 w-8"
+        )}>
+          <Rocket className="h-4 w-4 shrink-0 text-rocket-accent" />
+        </div>
         {!collapsed && (
-          <span className="truncate text-lg font-bold text-rocket-dark">{brandName}</span>
+          <span className="truncate text-sm font-semibold text-rocket-dark">{brandName}</span>
         )}
 
-        {/* Mobile close button */}
         {onClose && (
           <button
             onClick={onClose}
             className={cn(
-              "ml-auto rounded-md p-1 text-rocket-muted hover:bg-rocket-bg hover:text-rocket-dark md:hidden",
+              "ml-auto rounded-lg p-1.5 text-rocket-muted hover:bg-rocket-bg hover:text-rocket-dark md:hidden transition-colors",
               collapsed && "hidden"
             )}
             aria-label="Close menu"
           >
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4" />
           </button>
         )}
       </div>
 
-      {/* ── Navigation ───────────────────────────────────────────────────── */}
+      {/* Navigation */}
       <nav className="flex-1 space-y-0.5 overflow-y-auto py-3 px-2">
         {allNavItems.map((item) => {
           const isActive =
@@ -118,42 +117,43 @@ export function Sidebar({
               onClick={() => onClose?.()}
               title={collapsed ? item.label : undefined}
               className={cn(
-                "flex items-center gap-3 rounded-md py-2 text-sm font-medium transition-colors",
+                "group flex items-center gap-3 rounded-lg py-2 text-[13px] font-medium transition-all duration-150",
                 collapsed ? "justify-center px-0" : "px-3",
                 isActive
-                  ? "bg-rocket-blue/10 text-rocket-blue"
+                  ? "bg-rocket-blue/8 text-rocket-blue shadow-sm shadow-rocket-blue/5"
                   : "text-rocket-muted hover:bg-rocket-bg hover:text-rocket-dark",
               )}
             >
-              <item.icon className="h-4 w-4 shrink-0" />
+              <item.icon className={cn(
+                "h-4 w-4 shrink-0 transition-colors",
+                isActive ? "text-rocket-blue" : "text-rocket-muted group-hover:text-rocket-dark"
+              )} />
               {!collapsed && <span className="truncate">{item.label}</span>}
             </Link>
           );
         })}
       </nav>
 
-      {/* ── Footer ───────────────────────────────────────────────────────── */}
+      {/* Footer */}
       <div className="shrink-0 border-t border-rocket-border py-3 px-2 space-y-0.5">
-        {/* Sign out */}
         <button
           onClick={handleLogout}
           title={collapsed ? "Sign out" : undefined}
           className={cn(
-            "flex w-full items-center gap-3 rounded-md py-2 text-sm font-medium text-rocket-muted transition-colors hover:bg-rocket-bg hover:text-rocket-dark",
+            "group flex w-full items-center gap-3 rounded-lg py-2 text-[13px] font-medium text-rocket-muted transition-all duration-150 hover:bg-rocket-bg hover:text-rocket-dark",
             collapsed ? "justify-center px-0" : "px-3"
           )}
         >
-          <LogOut className="h-4 w-4 shrink-0" />
+          <LogOut className="h-4 w-4 shrink-0 group-hover:text-rocket-dark transition-colors" />
           {!collapsed && "Sign out"}
         </button>
 
-        {/* Desktop collapse toggle */}
         {onToggleCollapse && (
           <button
             onClick={onToggleCollapse}
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             className={cn(
-              "hidden md:flex w-full items-center gap-3 rounded-md py-2 text-sm font-medium text-rocket-muted transition-colors hover:bg-rocket-bg hover:text-rocket-dark",
+              "hidden md:flex w-full items-center gap-3 rounded-lg py-2 text-[13px] font-medium text-rocket-muted transition-all duration-150 hover:bg-rocket-bg hover:text-rocket-dark",
               collapsed ? "justify-center px-0" : "px-3"
             )}
           >
@@ -166,7 +166,7 @@ export function Sidebar({
         )}
 
         {!collapsed && (
-          <p className="px-3 pt-1 text-xs text-rocket-muted">
+          <p className="px-3 pt-2 text-[11px] text-rocket-muted/60">
             Powered by Federated Media
           </p>
         )}

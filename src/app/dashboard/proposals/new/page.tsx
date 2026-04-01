@@ -50,7 +50,7 @@ export default async function NewProposalPage({ searchParams }: PageProps) {
     funnelBody:      "",
     followUpSummary: "",
   };
-  let selectedSessionId = sessionParam ?? "";
+  const selectedSessionId = sessionParam ?? "";
 
   if (sessionParam) {
     // Fetch the most recent asset of each relevant type for this session
