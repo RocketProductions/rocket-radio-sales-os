@@ -4,6 +4,12 @@ import { useState, useCallback } from "react";
 
 export type AssetStatus = "unsaved" | "saving" | "saved" | "edited" | "approved" | "error";
 
+export interface AssetSeed<T> {
+  data: T;
+  dbId: string;
+  status: AssetStatus;
+}
+
 export interface UseAssetReturn<T> {
   data: T | null;
   dbId: string | null;
@@ -20,11 +26,12 @@ export interface UseAssetReturn<T> {
 
 export function useAsset<T>(
   assetType: "brief" | "radio-script" | "funnel-copy" | "follow-up-sequence",
-  sessionId: string
+  sessionId: string,
+  seed?: AssetSeed<T>
 ): UseAssetReturn<T> {
-  const [data, setData] = useState<T | null>(null);
-  const [dbId, setDbId] = useState<string | null>(null);
-  const [status, setStatus] = useState<AssetStatus>("unsaved");
+  const [data, setData] = useState<T | null>(seed?.data ?? null);
+  const [dbId, setDbId] = useState<string | null>(seed?.dbId ?? null);
+  const [status, setStatus] = useState<AssetStatus>(seed?.status ?? "unsaved");
   const [editMode, setEditMode] = useState(false);
 
   const saveNew = useCallback(

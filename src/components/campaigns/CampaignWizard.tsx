@@ -11,7 +11,7 @@ import { EditableScript } from "@/components/campaigns/EditableScript";
 import { EditableFunnel } from "@/components/campaigns/EditableFunnel";
 import { EditableFollowUp } from "@/components/campaigns/EditableFollowUp";
 import { AssetToolbar } from "@/components/campaigns/AssetToolbar";
-import { useAsset } from "@/hooks/useAsset";
+import { useAsset, type AssetSeed } from "@/hooks/useAsset";
 import {
   Loader2, Sparkles, CheckCircle2, Radio, FileText,
   MessageSquare, Globe, AlertCircle, Send, ExternalLink, Copy, Check,
@@ -65,6 +65,23 @@ interface FollowUpResult {
   toneNotes?: string | null;
 }
 
+// ─── Resume data types ────────────────────────────────────────────────────────
+
+export interface InitialSessionData {
+  sessionId: string;
+  businessName: string;
+  brandKit: BrandKit | null;
+  brandKitId: string | null;
+  /** Intake form fields saved at registration time */
+  intakeForm: Partial<IntakeForm>;
+  brief:    AssetSeed<IntakeResult> | null;
+  script:   AssetSeed<RadioScriptResult> | null;
+  funnel:   AssetSeed<FunnelCopyResult> | null;
+  followUp: AssetSeed<FollowUpResult> | null;
+  lpSlug:   string | null;
+  liveUrl:  string | null;
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 async function generate<T>(mode: string, input: Record<string, unknown>): Promise<T> {
@@ -80,61 +97,64 @@ async function generate<T>(mode: string, input: Record<string, unknown>): Promis
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function CampaignWizard() {
-  // Stable session ID for this wizard instance
+export function CampaignWizard({ initialData }: { initialData?: InitialSessionData }) {
+  // Stable session ID — reuse existing if resuming, otherwise generate fresh
   const reactId = useId();
   const [sessionId] = useState(() => {
-    // crypto.randomUUID() is available in all modern browsers and Node 18+
+    if (initialData?.sessionId) return initialData.sessionId;
     if (typeof crypto !== "undefined" && crypto.randomUUID) {
       return crypto.randomUUID();
     }
-    // Fallback
     return reactId.replace(/:/g, "") + Date.now().toString(36);
   });
 
   const [form, setForm] = useState<IntakeForm>({
-    businessName: "",
-    industry: "",
-    website: "",
-    primaryGoal: "leads",
-    targetAudience: "",
-    offer: "",
-    seasonality: "",
+    businessName:   initialData?.businessName ?? "",
+    industry:       initialData?.intakeForm?.industry       ?? "",
+    website:        initialData?.intakeForm?.website        ?? "",
+    primaryGoal:    initialData?.intakeForm?.primaryGoal    ?? "leads",
+    targetAudience: initialData?.intakeForm?.targetAudience ?? "",
+    offer:          initialData?.intakeForm?.offer          ?? "",
+    seasonality:    initialData?.intakeForm?.seasonality    ?? "",
   });
 
   const [generatingKey, setGeneratingKey] = useState<string | null>(null);
   const [generateError, setGenerateError] = useState("");
 
-  // Brand kit
-  const [brandKit, setBrandKit]       = useState<BrandKit | null>(null);
-  const [brandKitId, setBrandKitId]   = useState<string | null>(null);
+  // Brand kit — restored from saved session if resuming
+  const [brandKit, setBrandKit]         = useState<BrandKit | null>(initialData?.brandKit ?? null);
+  const [brandKitId, setBrandKitId]     = useState<string | null>(initialData?.brandKitId ?? null);
   const [scrapedTitle, setScrapedTitle] = useState("");
-  const [scanning, setScanning]       = useState(false);
-  const [scanError, setScanError]     = useState("");
-  const [aiSuggestedFields, setAiSuggestedFields] = useState<string[]>([]); // fields pre-filled by scan
+  const [scanning, setScanning]         = useState(false);
+  const [scanError, setScanError]       = useState("");
+  const [aiSuggestedFields, setAiSuggestedFields] = useState<string[]>([]);
 
-  // Per-asset state with DB sync
-  const briefAsset    = useAsset<IntakeResult>("brief", sessionId);
-  const scriptAsset   = useAsset<RadioScriptResult>("radio-script", sessionId);
-  const funnelAsset   = useAsset<FunnelCopyResult>("funnel-copy", sessionId);
-  const followUpAsset = useAsset<FollowUpResult>("follow-up-sequence", sessionId);
+  // Per-asset state — seeded from DB if resuming
+  const briefAsset    = useAsset<IntakeResult>("brief", sessionId,
+    initialData?.brief    ?? undefined);
+  const scriptAsset   = useAsset<RadioScriptResult>("radio-script", sessionId,
+    initialData?.script   ?? undefined);
+  const funnelAsset   = useAsset<FunnelCopyResult>("funnel-copy", sessionId,
+    initialData?.funnel   ?? undefined);
+  const followUpAsset = useAsset<FollowUpResult>("follow-up-sequence", sessionId,
+    initialData?.followUp ?? undefined);
 
   // Phase C — client review
-  const [reviewUrl, setReviewUrl]       = useState("");
-  const [repMessage, setRepMessage]     = useState("");
+  const [reviewUrl, setReviewUrl]         = useState("");
+  const [repMessage, setRepMessage]       = useState("");
   const [sendingReview, setSendingReview] = useState(false);
-  const [reviewError, setReviewError]   = useState("");
-  const [copied, setCopied]             = useState(false);
+  const [reviewError, setReviewError]     = useState("");
+  const [copied, setCopied]               = useState(false);
 
   // Phase D — publish landing page
-  const [slug, setSlug]             = useState("");
-  const [publishing, setPublishing] = useState(false);
+  const [slug, setSlug]               = useState(initialData?.lpSlug ?? "");
+  const [publishing, setPublishing]   = useState(false);
   const [publishError, setPublishError] = useState("");
-  const [liveUrl, setLiveUrl]       = useState("");
+  const [liveUrl, setLiveUrl]         = useState(initialData?.liveUrl ?? "");
 
-  // Session tracking
-  const [sessionRegistered, setSessionRegistered]   = useState(false);
-  const [brandLimitError, setBrandLimitError]       = useState("");
+  // Session tracking — already registered if we're resuming
+  const [sessionRegistered, setSessionRegistered] = useState(!!initialData?.sessionId);
+  const [brandLimitError, setBrandLimitError]     = useState("");
 
   // Ref for scrolling back to intake form when editing brief
   const intakeCardRef = useRef<HTMLDivElement>(null);
@@ -237,6 +257,14 @@ export function CampaignWizard() {
           sessionId:    sessionId,
           businessName: form.businessName,
           brandKitId:   brandKitId ?? undefined,
+          intakeForm:   {
+            industry:       form.industry,
+            website:        form.website,
+            primaryGoal:    form.primaryGoal,
+            targetAudience: form.targetAudience,
+            offer:          form.offer,
+            seasonality:    form.seasonality,
+          },
           ...extra,
         }),
       });

@@ -12,6 +12,7 @@ const PostSchema = z.object({
   assetCount:   z.number().int().nonnegative().optional(),
   lpSlug:       z.string().optional(),
   lpLive:       z.boolean().optional(),
+  intakeForm:   z.record(z.string()).optional(), // full intake form snapshot for resume
 });
 
 // ── POST — register/upsert a campaign session ─────────────────────────────────
@@ -85,6 +86,7 @@ export async function POST(req: Request) {
           lp_slug:       body.lpSlug ?? null,
           lp_live:       body.lpLive ?? false,
           asset_count:   body.assetCount ?? 0,
+          intake_form:   body.intakeForm ?? null,
           status:        "active",
           updated_at:    now,
         },
