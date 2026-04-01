@@ -131,6 +131,10 @@ export function CampaignWizard() {
   const [publishError, setPublishError] = useState("");
   const [liveUrl, setLiveUrl]       = useState("");
 
+  // Session tracking
+  const [sessionRegistered, setSessionRegistered]   = useState(false);
+  const [brandLimitError, setBrandLimitError]       = useState("");
+
   // The live brief (from briefAsset.data or editedContent)
   const brief = briefAsset.data;
 
@@ -194,6 +198,34 @@ export function CampaignWizard() {
     }
   }
 
+  // ── Session registration ──────────────────────────────────────────────────
+  async function registerSession(extra?: { lpSlug?: string; lpLive?: boolean; assetCount?: number }) {
+    if (!form.businessName) return;
+    try {
+      const res = await fetch("/api/campaigns/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId:    sessionId,
+          businessName: form.businessName,
+          brandKitId:   brandKitId ?? undefined,
+          ...extra,
+        }),
+      });
+      const json = await res.json();
+      if (!json.ok) {
+        if (json.error === "BRAND_LIMIT_REACHED") {
+          setBrandLimitError(json.upgradeMessage ?? "Brand limit reached. Please upgrade your plan.");
+        }
+        return;
+      }
+      setBrandLimitError("");
+      setSessionRegistered(true);
+    } catch {
+      // Non-blocking — session registration failure shouldn't block the workflow
+    }
+  }
+
   // ── Handlers ──────────────────────────────────────────────────────────────
   function handleBrief() {
     runGenerate<IntakeResult>("brief", "client-intake", {
@@ -209,6 +241,10 @@ export function CampaignWizard() {
         businessName: form.businessName,
         brandKitId: bkId ?? undefined,
       });
+      // Register session on first asset save
+      if (!sessionRegistered) {
+        await registerSession();
+      }
     });
   }
 
@@ -309,6 +345,8 @@ export function CampaignWizard() {
       const json = await res.json();
       if (!json.ok) throw new Error(json.error);
       setLiveUrl(json.liveUrl);
+      // Update session with LP info
+      await registerSession({ lpSlug: slug, lpLive: true, assetCount: 4 });
     } catch (err) {
       setPublishError(err instanceof Error ? err.message : "Publish failed");
     } finally {
@@ -432,13 +470,26 @@ export function CampaignWizard() {
             </div>
           </div>
 
+          {brandLimitError && (
+            <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800">
+              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-amber-500" />
+              <div>
+                <p className="font-medium">Brand limit reached</p>
+                <p className="mt-0.5 text-amber-700">{brandLimitError}</p>
+                <a href="/dashboard/billing" className="mt-1 inline-block text-xs font-medium text-amber-800 underline hover:text-amber-900">
+                  View upgrade options →
+                </a>
+              </div>
+            </div>
+          )}
+
           {generateError && (
             <p className="flex items-center gap-1.5 text-sm text-rocket-danger">
               <AlertCircle className="h-4 w-4 shrink-0" />{generateError}
             </p>
           )}
 
-          <Button onClick={handleBrief} disabled={isBusy || !canGenerate} className="w-full md:w-auto">
+          <Button onClick={handleBrief} disabled={isBusy || !canGenerate || !!brandLimitError} className="w-full md:w-auto">
             {generatingKey === "brief" ? (
               <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Generating Brief...</>
             ) : (
