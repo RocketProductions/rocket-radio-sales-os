@@ -7,11 +7,12 @@ export async function POST(req: Request) {
     const tenantId = req.headers.get("x-tenant-id") ?? "default";
     const body = await req.json();
 
-    const { title, noteContent, brandKitId, sessionId } = body as {
+    const { title, noteContent, brandKitId, sessionId, ownerType } = body as {
       title: string;
       noteContent: string;
       brandKitId?: string;
       sessionId?: string;
+      ownerType?: "client" | "agency";
     };
 
     if (!title || typeof title !== "string" || title.trim().length === 0) {
@@ -38,6 +39,7 @@ export async function POST(req: Request) {
         storage_path: null,
         file_size: new TextEncoder().encode(noteContent).length,
         note_content: noteContent,
+        owner_type: ownerType ?? "client",
         tags: [],
       })
       .select()

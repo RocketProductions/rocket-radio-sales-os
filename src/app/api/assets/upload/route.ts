@@ -14,8 +14,9 @@ export async function POST(req: Request) {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
     const category = formData.get("category") as string | null;
-    const sessionId = (formData.get("sessionId") as string | null) ?? null;
+    const sessionId  = (formData.get("sessionId")  as string | null) ?? null;
     const brandKitId = (formData.get("brandKitId") as string | null) ?? null;
+    const ownerType  = (formData.get("ownerType")  as "client" | "agency" | null) ?? "client";
 
     if (!file) {
       return NextResponse.json({ ok: false, error: "No file provided" }, { status: 400 });
@@ -65,6 +66,7 @@ export async function POST(req: Request) {
         storage_path: storagePath,
         file_size: file.size,
         note_content: null,
+        owner_type: ownerType,
         tags: [],
       })
       .select()

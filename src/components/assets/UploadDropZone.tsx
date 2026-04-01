@@ -17,9 +17,12 @@ const CATEGORY_TABS: { value: FileCategory; label: string }[] = [
 interface UploadDropZoneProps {
   onUploaded: (asset: UploadedAsset) => void;
   sessionId?: string;
+  ownerType?: "client" | "agency";
+  /** Renders a small inline button instead of the full drop zone */
+  compact?: boolean;
 }
 
-export function UploadDropZone({ onUploaded, sessionId }: UploadDropZoneProps) {
+export function UploadDropZone({ onUploaded, sessionId, ownerType, compact }: UploadDropZoneProps) {
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
@@ -43,7 +46,8 @@ export function UploadDropZone({ onUploaded, sessionId }: UploadDropZoneProps) {
       const formData = new FormData();
       formData.append("file", file);
       formData.append("category", detectCategory(file));
-      if (sessionId) formData.append("sessionId", sessionId);
+      if (sessionId)  formData.append("sessionId",  sessionId);
+      if (ownerType)  formData.append("ownerType",  ownerType);
 
       try {
         const res = await fetch("/api/assets/upload", {
@@ -89,6 +93,34 @@ export function UploadDropZone({ onUploaded, sessionId }: UploadDropZoneProps) {
       // Reset the input so the same file can be re-selected
       e.target.value = "";
     }
+  }
+
+  // ── Compact mode: just a small upload button ──────────────────────────────
+  if (compact) {
+    return (
+      <>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7 text-xs"
+          disabled={uploading}
+          onClick={() => inputRef.current?.click()}
+        >
+          {uploading
+            ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Uploading…</>
+            : <><UploadCloud className="h-3 w-3 mr-1" />Upload</>
+          }
+        </Button>
+        <input
+          ref={inputRef}
+          type="file"
+          multiple
+          accept="image/*,.pdf,.doc,.docx"
+          className="hidden"
+          onChange={handleInputChange}
+        />
+      </>
+    );
   }
 
   return (

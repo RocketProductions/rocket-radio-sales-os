@@ -11,9 +11,10 @@ interface AddNoteModalProps {
   onClose: () => void;
   onSaved: (asset: UploadedAsset) => void;
   sessionId?: string;
+  ownerType?: "client" | "agency";
 }
 
-export function AddNoteModal({ open, onClose, onSaved, sessionId }: AddNoteModalProps) {
+export function AddNoteModal({ open, onClose, onSaved, sessionId, ownerType }: AddNoteModalProps) {
   const [title, setTitle] = useState("");
   const [noteContent, setNoteContent] = useState("");
   const [saving, setSaving] = useState(false);
@@ -38,6 +39,7 @@ export function AddNoteModal({ open, onClose, onSaved, sessionId }: AddNoteModal
           title: title.trim(),
           noteContent: noteContent.trim(),
           sessionId,
+          ownerType: ownerType ?? "client",
         }),
       });
 

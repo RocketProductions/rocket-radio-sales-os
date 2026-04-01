@@ -1,5 +1,45 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
+
+const PatchSchema = z.object({
+  owner_type: z.enum(["client", "agency"]).optional(),
+  tags:       z.array(z.string()).optional(),
+});
+
+/** PATCH /api/assets/[id] — update owner_type (promote/demote) or tags */
+export async function PATCH(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const body = PatchSchema.parse(await req.json());
+    const supabase = getSupabaseAdmin();
+
+    const updates: Record<string, unknown> = {};
+    if (body.owner_type !== undefined) updates.owner_type = body.owner_type;
+    if (body.tags       !== undefined) updates.tags       = body.tags;
+
+    if (Object.keys(updates).length === 0) {
+      return NextResponse.json({ ok: false, error: "Nothing to update" }, { status: 400 });
+    }
+
+    const { data, error } = await supabase
+      .from("brand_uploads")
+      .update(updates)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+
+    return NextResponse.json({ ok: true, asset: data });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    return NextResponse.json({ ok: false, error: message }, { status: 400 });
+  }
+}
 
 export async function DELETE(
   _req: Request,
