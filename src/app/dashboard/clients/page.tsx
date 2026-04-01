@@ -56,7 +56,7 @@ export default async function ClientsPage() {
   const clientMap = new Map<string, ClientRow>();
 
   for (const s of sessions ?? []) {
-    const raw = s as {
+    const raw = s as unknown as {
       session_id: string;
       business_name: string;
       brand_kit_id: string | null;
