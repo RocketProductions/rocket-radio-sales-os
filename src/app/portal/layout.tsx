@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { Rocket } from "lucide-react";
 import { resolveBranding, brandingToCss, getTenantIdFromCookie } from "@/lib/branding";
+import { PortalSignOutButton } from "@/components/portal/PortalSignOutButton";
 
 /**
  * Client Portal Layout
@@ -32,11 +33,14 @@ export default async function PortalLayout({ children }: { children: React.React
               <Rocket className="h-5 w-5 text-rocket-accent" />
               <span className="font-semibold text-rocket-dark">Your Leads</span>
             </div>
-            {!branding.hideRocketBranding && (
-              <span className="text-sm text-rocket-muted">
-                Powered by {branding.brandName}
-              </span>
-            )}
+            <div className="flex items-center gap-4">
+              {!branding.hideRocketBranding && (
+                <span className="text-sm text-rocket-muted hidden sm:block">
+                  Powered by {branding.brandName}
+                </span>
+              )}
+              <PortalSignOutButton />
+            </div>
           </div>
         </header>
 

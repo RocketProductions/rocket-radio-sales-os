@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Radio, FileText, MessageSquare, Globe, Building2 } from "lucide-react";
+import { ProposalPrintButton } from "@/components/proposals/ProposalPrintButton";
 
 export const dynamic = "force-dynamic";
 
@@ -65,7 +66,7 @@ export default async function ProposalDetailPage({ params }: Props) {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between print:hidden">
         <div className="flex items-center gap-3">
           <Link href="/dashboard/proposals">
             <Button variant="ghost" size="sm">
@@ -91,6 +92,17 @@ export default async function ProposalDetailPage({ params }: Props) {
             {TIER_LABELS[tier] ?? tier}
           </Badge>
         </div>
+      </div>
+
+      {/* Print-only title */}
+      <div className="hidden print:block mb-6">
+        <h1 className="text-2xl font-bold">{proposal.title}</h1>
+        {proposal.campaign_sessions?.business_name && (
+          <p className="text-base text-rocket-muted">{proposal.campaign_sessions.business_name}</p>
+        )}
+        <p className="text-sm text-rocket-muted mt-1">
+          Prepared {new Date(proposal.created_at).toLocaleDateString([], { month: "long", day: "numeric", year: "numeric" })}
+        </p>
       </div>
 
       {/* ─── Big Idea ─────────────────────────────────────────────────── */}
@@ -241,7 +253,7 @@ export default async function ProposalDetailPage({ params }: Props) {
 
       {/* ─── Internal Notes ───────────────────────────────────────────── */}
       {proposal.notes && (
-        <Card className="border-dashed">
+        <Card className="border-dashed print:hidden">
           <CardContent className="pt-4">
             <p className="text-xs font-medium text-rocket-muted">
               Internal Notes (not shown to client)
@@ -252,10 +264,8 @@ export default async function ProposalDetailPage({ params }: Props) {
       )}
 
       {/* ─── Actions ──────────────────────────────────────────────────── */}
-      <div className="flex gap-3 pb-8">
-        <Button variant="outline" className="flex-1" disabled>
-          Print / Export PDF
-        </Button>
+      <div className="flex gap-3 pb-8 print:hidden">
+        <ProposalPrintButton />
         <Link href="/dashboard/proposals" className="flex-1">
           <Button variant="ghost" className="w-full">
             Back to proposals

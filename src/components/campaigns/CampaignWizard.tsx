@@ -19,6 +19,7 @@ import {
 import Link from "next/link";
 import type { BrandKit } from "@/ai/modes/brandAnalysis";
 import { formatBrandContext } from "@/ai/modes/brandAnalysis";
+import { FRAMEWORK_NAMES } from "@/ai/modes/radioScriptFrameworks";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -125,6 +126,7 @@ export function CampaignWizard({ initialData }: { initialData?: InitialSessionDa
 
   const [generatingKey, setGeneratingKey] = useState<string | null>(null);
   const [generateError, setGenerateError] = useState("");
+  const [preferredFramework, setPreferredFramework] = useState("");
 
   // Brand kit — restored from saved session if resuming
   const [brandKit, setBrandKit]         = useState<BrandKit | null>(initialData?.brandKit ?? null);
@@ -341,7 +343,7 @@ export function CampaignWizard({ initialData }: { initialData?: InitialSessionDa
     });
   }
 
-  function handleScript() {
+  function handleScript(frameworkOverride?: string) {
     runGenerate<RadioScriptResult>("script", "radio-script", {
       businessName:   form.businessName,
       industry:       form.industry,
@@ -354,6 +356,8 @@ export function CampaignWizard({ initialData }: { initialData?: InitialSessionDa
       bigIdea:        brief?.bigIdea,
       campaignType:   brief?.campaignType,
       offerScore:     brief?.offerDefinition.score,
+      // Framework override — passed when rep requests a specific angle
+      framework:      frameworkOverride || undefined,
     }, async (result, bkId) => {
       await scriptAsset.saveNew(result, {
         businessName: form.businessName,
@@ -731,7 +735,7 @@ export function CampaignWizard({ initialData }: { initialData?: InitialSessionDa
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-3">
-                <Button onClick={handleScript} disabled={isBusy} variant="outline">
+                <Button onClick={() => { handleScript(); }} disabled={isBusy} variant="outline">
                   {generatingKey === "script" ? (
                     <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Writing Script...</>
                   ) : (
@@ -759,7 +763,52 @@ export function CampaignWizard({ initialData }: { initialData?: InitialSessionDa
       )}
 
       {/* ── Editable asset cards ── */}
-      {scriptAsset.data   && <EditableScript   asset={scriptAsset} />}
+      {scriptAsset.data && <EditableScript asset={scriptAsset} />}
+
+      {/* ── Framework regeneration ── */}
+      {scriptAsset.data && (
+        <Card className="border-dashed">
+          <CardContent className="pt-4 pb-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-rocket-muted mb-2">
+              Try a different framework
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <Select
+                value={preferredFramework}
+                onChange={(e) => setPreferredFramework(e.target.value)}
+                className="flex-1 min-w-[200px] text-sm"
+              >
+                <option value="">— Let AI pick the best one —</option>
+                {FRAMEWORK_NAMES.map((name) => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </Select>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isBusy}
+                onClick={() => { handleScript(preferredFramework || undefined); }}
+                className="shrink-0"
+              >
+                {generatingKey === "script" ? (
+                  <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Writing…</>
+                ) : (
+                  <><Radio className="mr-1.5 h-3.5 w-3.5" />Regenerate Script</>
+                )}
+              </Button>
+            </div>
+            {scriptAsset.data.framework && (
+              <p className="mt-2 text-xs text-rocket-muted">
+                Current: <span className="font-medium">{scriptAsset.data.framework}</span>
+                {scriptAsset.data.frameworkReason && (
+                  <> — {scriptAsset.data.frameworkReason}</>
+                )}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {funnelAsset.data   && <EditableFunnel   asset={funnelAsset} />}
       {followUpAsset.data && <EditableFollowUp asset={followUpAsset} />}
 

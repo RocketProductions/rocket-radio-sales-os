@@ -116,9 +116,9 @@ function LoginForm() {
         </form>
 
         <p className="mt-6 text-center text-xs text-rocket-muted">
-          New client?{" "}
+          Reps:{" "}
           <a href="/onboarding" className="text-rocket-accent hover:underline">
-            Get started
+            Set up a new client account
           </a>
         </p>
       </div>
