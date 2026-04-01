@@ -1,92 +1,98 @@
 /**
  * Proposals API
  *
- * GET  /api/proposals          — list proposals (with optional brandId filter)
- * POST /api/proposals          — create proposal from campaign AI output
+ * GET  /api/proposals   — list proposals for this tenant
+ * POST /api/proposals   — create a new proposal
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { headers } from "next/headers";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
 const CreateProposalSchema = z.object({
-  brandId: z.string().uuid(),
-  campaignId: z.string().uuid().optional(),
-  title: z.string().min(1),
-  bigIdea: z.string().optional(),
-  offerText: z.string().optional(),
-  radioScript: z.string().optional(),
-  funnelHeadline: z.string().optional(),
-  funnelBody: z.string().optional(),
-  followUpSummary: z.string().optional(),
-  tier: z.enum(["starter", "growth", "scale"]).optional(),
-  notes: z.string().optional(),
+  sessionId:        z.string().min(1),
+  title:            z.string().min(1),
+  tier:             z.enum(["starter", "growth", "scale"]).default("starter"),
+  bigIdea:          z.string().optional(),
+  offerText:        z.string().optional(),
+  radioScript:      z.string().optional(),
+  funnelHeadline:   z.string().optional(),
+  funnelBody:       z.string().optional(),
+  followUpSummary:  z.string().optional(),
+  notes:            z.string().optional(),
 });
 
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const brandId = searchParams.get("brandId");
-
   try {
-    const proposals = await prisma.post.findMany({
-      where: {
-        contentType: "proposal",
-        ...(brandId ? { brandId } : {}),
-      },
-      include: {
-        brand: { select: { name: true } },
-      },
-      orderBy: { createdAt: "desc" },
-      take: 20,
-    });
+    const headersList = await headers();
+    const tenantId  = headersList.get("x-tenant-id") ?? "";
+    const userRole  = headersList.get("x-user-role") ?? "";
+    const isSuperAdmin = userRole === "super_admin";
 
-    return NextResponse.json({ proposals });
-  } catch {
-    return NextResponse.json({ proposals: [] });
+    const { searchParams } = new URL(req.url);
+    const sessionId = searchParams.get("sessionId");
+
+    const supabase = getSupabaseAdmin();
+
+    let query = supabase
+      .from("proposals")
+      .select(`
+        id, title, status, tier, big_idea, created_at, updated_at, session_id,
+        campaign_sessions ( business_name )
+      `)
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    if (sessionId) {
+      query = query.eq("session_id", sessionId);
+    } else if (!isSuperAdmin && tenantId) {
+      query = query.eq("tenant_id", tenantId);
+    }
+
+    const { data, error } = await query;
+    if (error) throw new Error(error.message);
+
+    return NextResponse.json({ ok: true, data });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json() as unknown;
-    const parsed = CreateProposalSchema.safeParse(body);
+    const headersList = await headers();
+    const tenantId = headersList.get("x-tenant-id") ?? "";
 
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: "Invalid request", details: parsed.error.flatten() },
-        { status: 400 },
-      );
-    }
+    const body = CreateProposalSchema.parse(await req.json());
+    const supabase = getSupabaseAdmin();
 
-    const data = parsed.data;
+    const { data: proposal, error } = await supabase
+      .from("proposals")
+      .insert({
+        session_id:        body.sessionId,
+        tenant_id:         tenantId || null,
+        title:             body.title,
+        tier:              body.tier,
+        status:            "draft",
+        big_idea:          body.bigIdea ?? null,
+        offer_text:        body.offerText ?? null,
+        radio_script:      body.radioScript ?? null,
+        funnel_headline:   body.funnelHeadline ?? null,
+        funnel_body:       body.funnelBody ?? null,
+        follow_up_summary: body.followUpSummary ?? null,
+        notes:             body.notes ?? null,
+      })
+      .select()
+      .single();
 
-    // Store proposals as a Post with contentType="proposal"
-    // This reuses the existing Post table rather than adding a new table
-    const proposal = await prisma.post.create({
-      data: {
-        brandId: data.brandId,
-        contentType: "proposal",
-        status: "draft",
-        brief: {
-          campaignId: data.campaignId,
-          title: data.title,
-          tier: data.tier ?? "starter",
-          notes: data.notes,
-        },
-        generatedCopy: {
-          bigIdea: data.bigIdea,
-          offerText: data.offerText,
-          radioScript: data.radioScript,
-          funnelHeadline: data.funnelHeadline,
-          funnelBody: data.funnelBody,
-          followUpSummary: data.followUpSummary,
-        },
-      },
-    });
+    if (error) throw new Error(error.message);
 
-    return NextResponse.json({ proposal }, { status: 201 });
+    return NextResponse.json({ ok: true, proposal }, { status: 201 });
   } catch (err) {
-    console.error("[proposals/POST]", err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    const message = err instanceof Error ? err.message : "Unknown error";
+    const status = message.includes("parse") ? 400 : 500;
+    return NextResponse.json({ ok: false, error: message }, { status });
   }
 }

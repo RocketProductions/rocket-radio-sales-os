@@ -1,10 +1,10 @@
-import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Radio, FileText, MessageSquare, Globe } from "lucide-react";
+import { ArrowLeft, Radio, FileText, MessageSquare, Globe, Building2 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -12,62 +12,55 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
-const TIER_LABELS: Record<string, string> = {
-  starter: "Starter — $497/mo",
-  growth: "Growth — $1,497/mo",
-  scale: "Scale — $2,997/mo",
+type ProposalDetail = {
+  id: string;
+  title: string;
+  status: string;
+  tier: string;
+  big_idea: string | null;
+  offer_text: string | null;
+  radio_script: string | null;
+  funnel_headline: string | null;
+  funnel_body: string | null;
+  follow_up_summary: string | null;
+  notes: string | null;
+  created_at: string;
+  session_id: string | null;
+  campaign_sessions: { business_name: string } | null;
 };
 
-/**
- * Proposal Detail View
- *
- * Renders the full proposal. This is what the rep reviews before
- * sending / printing / presenting to the client.
- *
- * Future: add PDF export, "Send to client" email action.
- */
+const TIER_LABELS: Record<string, string> = {
+  starter: "Starter — $497/mo",
+  growth:  "Growth — $1,497/mo",
+  scale:   "Scale — $2,997/mo",
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  draft: "bg-rocket-muted/10 text-rocket-muted border-rocket-muted/20",
+  ready: "bg-blue-50 text-blue-700 border-blue-200",
+  sent:  "bg-rocket-success/10 text-rocket-success border-rocket-success/20",
+};
+
 export default async function ProposalDetailPage({ params }: Props) {
   const { id } = await params;
+  const supabase = getSupabaseAdmin();
 
-  let proposal: {
-    id: string;
-    status: string;
-    brief: Record<string, unknown>;
-    generatedCopy: Record<string, unknown> | null;
-    createdAt: Date;
-    brand: { name: string; industry: string | null };
-  } | null = null;
+  const { data: raw, error } = await supabase
+    .from("proposals")
+    .select(`
+      id, title, status, tier,
+      big_idea, offer_text, radio_script,
+      funnel_headline, funnel_body, follow_up_summary,
+      notes, created_at, session_id,
+      campaign_sessions ( business_name )
+    `)
+    .eq("id", id)
+    .single();
 
-  try {
-    const raw = await prisma.post.findFirst({
-      where: { id, contentType: "proposal" },
-      select: {
-        id: true,
-        status: true,
-        brief: true,
-        generatedCopy: true,
-        createdAt: true,
-        brand: { select: { name: true, industry: true } },
-      },
-    });
+  if (error || !raw) notFound();
 
-    if (raw) {
-      proposal = {
-        ...raw,
-        brief: (raw.brief as Record<string, unknown>) ?? {},
-        generatedCopy: raw.generatedCopy as Record<string, unknown> | null,
-      };
-    }
-  } catch {
-    // DB not connected
-  }
-
-  if (!proposal) notFound();
-
-  const copy = proposal.generatedCopy ?? {};
-  const brief = proposal.brief;
-  const tier = (brief.tier as string) ?? "starter";
-  const title = (brief.title as string) ?? "Untitled Proposal";
+  const proposal = raw as unknown as ProposalDetail;
+  const tier = proposal.tier ?? "starter";
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -81,12 +74,17 @@ export default async function ProposalDetailPage({ params }: Props) {
             </Button>
           </Link>
           <div>
-            <h1 className="text-xl font-bold">{title}</h1>
-            <p className="text-sm text-rocket-muted">{proposal.brand.name}</p>
+            <h1 className="text-xl font-bold">{proposal.title}</h1>
+            <p className="text-sm text-rocket-muted">
+              {proposal.campaign_sessions?.business_name ?? "No campaign linked"}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-xs">
+          <Badge
+            variant="outline"
+            className={`text-xs ${STATUS_COLORS[proposal.status] ?? ""}`}
+          >
             {proposal.status}
           </Badge>
           <Badge variant="secondary" className="text-xs">
@@ -96,21 +94,21 @@ export default async function ProposalDetailPage({ params }: Props) {
       </div>
 
       {/* ─── Big Idea ─────────────────────────────────────────────────── */}
-      {copy.bigIdea && (
+      {proposal.big_idea && (
         <Card className="border-rocket-accent bg-rocket-accent/5">
           <CardContent className="pt-6">
             <p className="text-xs font-medium uppercase tracking-wide text-rocket-accent">
               The Big Idea
             </p>
             <p className="mt-2 text-lg font-semibold text-rocket-dark">
-              {copy.bigIdea as string}
+              {proposal.big_idea}
             </p>
           </CardContent>
         </Card>
       )}
 
       {/* ─── Offer ────────────────────────────────────────────────────── */}
-      {copy.offerText && (
+      {proposal.offer_text && (
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base">
@@ -120,14 +118,14 @@ export default async function ProposalDetailPage({ params }: Props) {
           </CardHeader>
           <CardContent>
             <p className="text-sm leading-relaxed text-rocket-dark">
-              {copy.offerText as string}
+              {proposal.offer_text}
             </p>
           </CardContent>
         </Card>
       )}
 
       {/* ─── Radio Script ──────────────────────────────────────────────── */}
-      {copy.radioScript && (
+      {proposal.radio_script && (
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base">
@@ -137,14 +135,14 @@ export default async function ProposalDetailPage({ params }: Props) {
           </CardHeader>
           <CardContent>
             <pre className="whitespace-pre-wrap rounded-md bg-rocket-bg p-4 font-mono text-sm leading-relaxed text-rocket-dark">
-              {copy.radioScript as string}
+              {proposal.radio_script}
             </pre>
           </CardContent>
         </Card>
       )}
 
       {/* ─── Landing Page ──────────────────────────────────────────────── */}
-      {(copy.funnelHeadline ?? copy.funnelBody) && (
+      {(proposal.funnel_headline || proposal.funnel_body) && (
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base">
@@ -153,19 +151,19 @@ export default async function ProposalDetailPage({ params }: Props) {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {copy.funnelHeadline && (
+            {proposal.funnel_headline && (
               <div>
                 <p className="text-xs font-medium text-rocket-muted">Headline</p>
                 <p className="mt-1 text-lg font-bold text-rocket-dark">
-                  {copy.funnelHeadline as string}
+                  {proposal.funnel_headline}
                 </p>
               </div>
             )}
-            {copy.funnelBody && (
+            {proposal.funnel_body && (
               <div>
                 <p className="text-xs font-medium text-rocket-muted">Body Copy</p>
-                <p className="mt-1 text-sm leading-relaxed text-rocket-dark">
-                  {copy.funnelBody as string}
+                <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-rocket-dark">
+                  {proposal.funnel_body}
                 </p>
               </div>
             )}
@@ -174,7 +172,7 @@ export default async function ProposalDetailPage({ params }: Props) {
       )}
 
       {/* ─── Follow-Up Plan ────────────────────────────────────────────── */}
-      {copy.followUpSummary && (
+      {proposal.follow_up_summary && (
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base">
@@ -184,25 +182,21 @@ export default async function ProposalDetailPage({ params }: Props) {
           </CardHeader>
           <CardContent>
             <p className="text-sm leading-relaxed text-rocket-dark">
-              {copy.followUpSummary as string}
+              {proposal.follow_up_summary}
             </p>
             <div className="mt-4 rounded-md border border-rocket-border bg-rocket-bg p-3">
               <p className="text-xs font-medium text-rocket-muted">Sequence</p>
               <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                {[
-                  "Instant text",
-                  "Day 1 email",
-                  "Day 3 text",
-                  "Day 7 email",
-                  "Day 14 text",
-                ].map((step) => (
-                  <span
-                    key={step}
-                    className="rounded-full border border-rocket-border bg-white px-2 py-0.5 text-rocket-dark"
-                  >
-                    {step}
-                  </span>
-                ))}
+                {["Instant text", "Day 1 email", "Day 3 text", "Day 7 email", "Day 14 text"].map(
+                  (step) => (
+                    <span
+                      key={step}
+                      className="rounded-full border border-rocket-border bg-white px-2 py-0.5 text-rocket-dark"
+                    >
+                      {step}
+                    </span>
+                  ),
+                )}
               </div>
             </div>
           </CardContent>
@@ -231,19 +225,35 @@ export default async function ProposalDetailPage({ params }: Props) {
         </CardContent>
       </Card>
 
+      {/* ─── Campaign Link ─────────────────────────────────────────────── */}
+      {proposal.session_id && (
+        <div className="flex items-center gap-2 rounded-md border border-rocket-border bg-rocket-bg px-3 py-2 text-sm text-rocket-muted">
+          <Building2 className="h-4 w-4 shrink-0" />
+          <span>Linked to campaign:</span>
+          <Link
+            href={`/dashboard/campaigns/new?session=${proposal.session_id}`}
+            className="font-medium text-rocket-blue hover:underline"
+          >
+            {proposal.campaign_sessions?.business_name ?? proposal.session_id}
+          </Link>
+        </div>
+      )}
+
       {/* ─── Internal Notes ───────────────────────────────────────────── */}
-      {brief.notes && (
+      {proposal.notes && (
         <Card className="border-dashed">
           <CardContent className="pt-4">
-            <p className="text-xs font-medium text-rocket-muted">Internal Notes (not shown to client)</p>
-            <p className="mt-1 text-sm text-rocket-muted">{brief.notes as string}</p>
+            <p className="text-xs font-medium text-rocket-muted">
+              Internal Notes (not shown to client)
+            </p>
+            <p className="mt-1 text-sm text-rocket-muted">{proposal.notes}</p>
           </CardContent>
         </Card>
       )}
 
-      {/* Actions */}
+      {/* ─── Actions ──────────────────────────────────────────────────── */}
       <div className="flex gap-3 pb-8">
-        <Button variant="outline" className="flex-1">
+        <Button variant="outline" className="flex-1" disabled>
           Print / Export PDF
         </Button>
         <Link href="/dashboard/proposals" className="flex-1">

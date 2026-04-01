@@ -1,5 +1,6 @@
-import { prisma } from "@/lib/prisma";
+import { headers } from "next/headers";
 import Link from "next/link";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -7,55 +8,52 @@ import { FileText, Plus } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
-/**
- * Proposals List (internal)
- *
- * Where reps assemble a client proposal from AI-generated campaign outputs.
- * A proposal = big idea + offer + radio script + funnel headline + pricing tier.
- * It's a leave-behind after a pitch call, or a PDF to email the client.
- */
+type ProposalRow = {
+  id: string;
+  title: string;
+  status: string;
+  tier: string;
+  big_idea: string | null;
+  created_at: string;
+  session_id: string | null;
+  campaign_sessions: { business_name: string } | null;
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  draft: "bg-rocket-muted/10 text-rocket-muted border-rocket-muted/20",
+  ready: "bg-blue-50 text-blue-700 border-blue-200",
+  sent:  "bg-rocket-success/10 text-rocket-success border-rocket-success/20",
+};
+
+const TIER_LABELS: Record<string, string> = {
+  starter: "Starter",
+  growth:  "Growth",
+  scale:   "Scale",
+};
+
 export default async function ProposalsPage() {
-  let proposals: Array<{
-    id: string;
-    status: string;
-    brief: { title?: string; tier?: string };
-    createdAt: Date;
-    brand: { name: string };
-  }> = [];
+  const headersList = await headers();
+  const tenantId  = headersList.get("x-tenant-id") ?? "";
+  const userRole  = headersList.get("x-user-role") ?? "";
+  const isSuperAdmin = userRole === "super_admin";
 
-  try {
-    const raw = await prisma.post.findMany({
-      where: { contentType: "proposal" },
-      select: {
-        id: true,
-        status: true,
-        brief: true,
-        createdAt: true,
-        brand: { select: { name: true } },
-      },
-      orderBy: { createdAt: "desc" },
-      take: 30,
-    });
+  const supabase = getSupabaseAdmin();
 
-    proposals = raw.map((p) => ({
-      ...p,
-      brief: (p.brief as { title?: string; tier?: string }) ?? {},
-    }));
-  } catch {
-    // DB not connected
+  let query = supabase
+    .from("proposals")
+    .select(`
+      id, title, status, tier, big_idea, created_at, session_id,
+      campaign_sessions ( business_name )
+    `)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (!isSuperAdmin && tenantId) {
+    query = query.eq("tenant_id", tenantId);
   }
 
-  const STATUS_COLORS: Record<string, string> = {
-    draft: "bg-rocket-muted/10 text-rocket-muted border-rocket-muted/20",
-    ready: "bg-blue-50 text-blue-700 border-blue-200",
-    sent: "bg-rocket-success/10 text-rocket-success border-rocket-success/20",
-  };
-
-  const TIER_LABELS: Record<string, string> = {
-    starter: "Starter",
-    growth: "Growth",
-    scale: "Scale",
-  };
+  const { data: rawProposals } = await query;
+  const proposals = (rawProposals ?? []) as unknown as ProposalRow[];
 
   return (
     <div className="space-y-6">
@@ -96,7 +94,7 @@ export default async function ProposalsPage() {
                 <CardHeader className="pb-2">
                   <div className="flex items-start justify-between gap-2">
                     <CardTitle className="text-base leading-snug">
-                      {p.brief.title ?? "Untitled Proposal"}
+                      {p.title}
                     </CardTitle>
                     <Badge
                       variant="outline"
@@ -107,15 +105,20 @@ export default async function ProposalsPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                  <p className="text-sm text-rocket-muted">{p.brand.name}</p>
-                  <div className="flex items-center justify-between">
-                    {p.brief.tier && (
-                      <Badge variant="secondary" className="text-xs">
-                        {TIER_LABELS[p.brief.tier] ?? p.brief.tier}
-                      </Badge>
-                    )}
-                    <span className="ml-auto text-xs text-rocket-muted">
-                      {new Date(p.createdAt).toLocaleDateString()}
+                  <p className="text-sm text-rocket-muted">
+                    {p.campaign_sessions?.business_name ?? "—"}
+                  </p>
+                  {p.big_idea && (
+                    <p className="text-xs text-rocket-dark line-clamp-2 leading-relaxed">
+                      {p.big_idea}
+                    </p>
+                  )}
+                  <div className="flex items-center justify-between pt-1">
+                    <Badge variant="secondary" className="text-xs">
+                      {TIER_LABELS[p.tier] ?? p.tier}
+                    </Badge>
+                    <span className="text-xs text-rocket-muted">
+                      {new Date(p.created_at).toLocaleDateString()}
                     </span>
                   </div>
                 </CardContent>

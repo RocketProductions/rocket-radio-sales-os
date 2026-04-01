@@ -14,8 +14,9 @@ import { AssetToolbar } from "@/components/campaigns/AssetToolbar";
 import { useAsset, type AssetSeed } from "@/hooks/useAsset";
 import {
   Loader2, Sparkles, CheckCircle2, Radio, FileText,
-  MessageSquare, Globe, AlertCircle, Send, ExternalLink, Copy, Check,
+  MessageSquare, Globe, AlertCircle, Send, ExternalLink, Copy, Check, ClipboardList,
 } from "lucide-react";
+import Link from "next/link";
 import type { BrandKit } from "@/ai/modes/brandAnalysis";
 import { formatBrandContext } from "@/ai/modes/brandAnalysis";
 
@@ -855,6 +856,26 @@ export function CampaignWizard({ initialData }: { initialData?: InitialSessionDa
                 </Button>
               </div>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── Build Proposal ─────────────────────────────────────────────────── */}
+      {hasAnyAsset && (
+        <Card className="border-rocket-accent/30 bg-rocket-accent/5">
+          <CardContent className="flex items-center justify-between py-4 gap-4">
+            <div className="min-w-0">
+              <p className="font-medium text-rocket-dark text-sm">Ready to pitch?</p>
+              <p className="text-xs text-rocket-muted mt-0.5">
+                Assemble the big idea, offer, script, and pricing into a client proposal.
+              </p>
+            </div>
+            <Link href={`/dashboard/proposals/new?session=${sessionId}`} className="shrink-0">
+              <Button variant="outline" size="sm" className="border-rocket-accent text-rocket-accent hover:bg-rocket-accent hover:text-white">
+                <ClipboardList className="mr-1.5 h-4 w-4" />
+                Build Proposal
+              </Button>
+            </Link>
           </CardContent>
         </Card>
       )}

@@ -1,272 +1,117 @@
-"use client";
+import { headers } from "next/headers";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import { NewProposalClient, type SessionOption, type PrefilledData } from "@/components/proposals/NewProposalClient";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { ArrowLeft, Loader2, FileText } from "lucide-react";
-import Link from "next/link";
+export const dynamic = "force-dynamic";
 
-type Tier = "starter" | "growth" | "scale";
+interface PageProps {
+  searchParams: Promise<{ session?: string }>;
+}
 
-const TIER_OPTIONS: { value: Tier; label: string; price: string; description: string }[] = [
-  {
-    value: "starter",
-    label: "Starter",
-    price: "$497/mo",
-    description: "Lead visibility + 1 campaign setup + instant auto-response",
-  },
-  {
-    value: "growth",
-    label: "Growth",
-    price: "$1,497/mo",
-    description: "Full managed campaign service + 5-touch follow-up + monthly review",
-  },
-  {
-    value: "scale",
-    label: "Scale",
-    price: "$2,997/mo",
-    description: "Multi-campaign testing + advanced reporting + dedicated strategy",
-  },
-];
+// ── Extract content from a saved campaign asset ────────────────────────────────
+function pickContent(asset: { content: unknown; edited_content: unknown } | null): Record<string, unknown> {
+  if (!asset) return {};
+  const raw = asset.edited_content ?? asset.content;
+  if (raw && typeof raw === "object") return raw as Record<string, unknown>;
+  return {};
+}
 
-export default function NewProposalPage() {
-  const router = useRouter();
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
+export default async function NewProposalPage({ searchParams }: PageProps) {
+  const { session: sessionParam } = await searchParams;
 
-  const [form, setForm] = useState({
-    title: "",
-    brandId: "",
-    tier: "starter" as Tier,
-    bigIdea: "",
-    offerText: "",
-    radioScript: "",
-    funnelHeadline: "",
-    funnelBody: "",
-    followUpSummary: "",
-    notes: "",
-  });
+  const headersList = await headers();
+  const tenantId  = headersList.get("x-tenant-id") ?? "";
+  const userRole  = headersList.get("x-user-role") ?? "";
+  const isSuperAdmin = userRole === "super_admin";
 
-  function set(field: keyof typeof form, value: string) {
-    setForm((prev) => ({ ...prev, [field]: value }));
+  const supabase = getSupabaseAdmin();
+
+  // ── Load all active sessions for the picker ────────────────────────────────
+  let sessionsQuery = supabase
+    .from("campaign_sessions")
+    .select("session_id, business_name")
+    .eq("status", "active")
+    .order("updated_at", { ascending: false });
+
+  if (!isSuperAdmin && tenantId) {
+    sessionsQuery = sessionsQuery.eq("tenant_id", tenantId);
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!form.title || !form.brandId) {
-      setError("Proposal title and Brand ID are required.");
-      return;
+  const { data: rawSessions } = await sessionsQuery;
+  const sessions = (rawSessions ?? []) as SessionOption[];
+
+  // ── Pre-fill from campaign assets if ?session= provided ───────────────────
+  let prefilled: PrefilledData = {
+    title:           "",
+    bigIdea:         "",
+    offerText:       "",
+    radioScript:     "",
+    funnelHeadline:  "",
+    funnelBody:      "",
+    followUpSummary: "",
+  };
+  let selectedSessionId = sessionParam ?? "";
+
+  if (sessionParam) {
+    // Fetch the most recent asset of each relevant type for this session
+    const { data: rawAssets } = await supabase
+      .from("campaign_assets")
+      .select("id, asset_type, content, edited_content")
+      .eq("session_id", sessionParam)
+      .in("asset_type", ["client-intake", "radio-script", "funnel-copy", "follow-up-sequence"])
+      .order("created_at", { ascending: false });
+
+    // Keep latest per type
+    type RawAsset = { id: string; asset_type: string; content: unknown; edited_content: unknown };
+    const assets = (rawAssets ?? []) as unknown as RawAsset[];
+    const latest: Record<string, RawAsset> = {};
+    for (const a of assets) {
+      if (!latest[a.asset_type]) latest[a.asset_type] = a;
     }
-    setSaving(true);
-    setError("");
 
-    try {
-      const res = await fetch("/api/proposals", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      const data = await res.json() as { proposal?: { id: string }; error?: string };
+    const intake    = pickContent(latest["client-intake"] ?? null);
+    const script    = pickContent(latest["radio-script"] ?? null);
+    const funnel    = pickContent(latest["funnel-copy"] ?? null);
+    const followUp  = pickContent(latest["follow-up-sequence"] ?? null);
 
-      if (!res.ok) {
-        setError(data.error ?? "Something went wrong");
-        return;
-      }
+    // Derive the session's business name for the default title
+    const session = sessions.find((s) => s.session_id === sessionParam);
+    const bizName = session?.business_name ?? "";
 
-      router.push(`/dashboard/proposals/${data.proposal?.id}`);
-    } catch {
-      setError("Network error — please try again");
-    } finally {
-      setSaving(false);
+    // Build offer text from intake data
+    const offerDef = intake.offerDefinition as { offer?: string } | undefined;
+
+    // Build follow-up summary from first two messages
+    let followUpSummary = "";
+    if (Array.isArray(followUp.messages) && followUp.messages.length > 0) {
+      const first = followUp.messages[0] as { timing?: string; channel?: string; body?: string };
+      followUpSummary = `We follow up with every lead automatically: instant ${first.channel ?? "text"}, then day 1, 3, 7, and 14 touchpoints — so no lead goes cold.`;
     }
+
+    // Build funnel body from bodyCopy array or subheadline
+    let funnelBody = "";
+    if (Array.isArray(funnel.bodyCopy)) {
+      funnelBody = (funnel.bodyCopy as string[]).slice(0, 2).join("\n\n");
+    } else if (funnel.subheadline) {
+      funnelBody = funnel.subheadline as string;
+    }
+
+    prefilled = {
+      title:           bizName ? `${bizName} — Campaign Proposal` : "",
+      bigIdea:         (intake.bigIdea as string) ?? "",
+      offerText:       (offerDef?.offer as string) ?? "",
+      radioScript:     (script.script as string) ?? "",
+      funnelHeadline:  (funnel.headline as string) ?? "",
+      funnelBody,
+      followUpSummary,
+    };
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <Link href="/dashboard/proposals">
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="mr-1 h-4 w-4" />
-            Proposals
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold">New Proposal</h1>
-          <p className="text-sm text-rocket-muted">
-            Assemble the campaign into a client-ready proposal.
-          </p>
-        </div>
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* ─── Basic Info ─────────────────────────────────────────────── */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Basic Info</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <label className="mb-1 block text-sm font-medium">Proposal Title</label>
-              <Input
-                placeholder="e.g. Rocky Road Roofing — Summer Campaign"
-                value={form.title}
-                onChange={(e) => set("title", e.target.value)}
-                required
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">Brand ID</label>
-              <Input
-                placeholder="UUID from Supabase brands table"
-                value={form.brandId}
-                onChange={(e) => set("brandId", e.target.value)}
-                required
-              />
-              <p className="mt-1 text-xs text-rocket-muted">
-                Find this in the Clients section or Supabase dashboard.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* ─── Pricing Tier ────────────────────────────────────────────── */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Pricing Tier</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-3 sm:grid-cols-3">
-              {TIER_OPTIONS.map((tier) => (
-                <button
-                  key={tier.value}
-                  type="button"
-                  onClick={() => set("tier", tier.value)}
-                  className={`rounded-lg border p-4 text-left transition-all ${
-                    form.tier === tier.value
-                      ? "border-rocket-accent bg-rocket-accent/5 ring-1 ring-rocket-accent"
-                      : "border-rocket-border hover:border-rocket-muted"
-                  }`}
-                >
-                  <p className="font-semibold text-rocket-dark">{tier.label}</p>
-                  <p className="mt-0.5 text-lg font-bold text-rocket-accent">{tier.price}</p>
-                  <p className="mt-1 text-xs text-rocket-muted">{tier.description}</p>
-                </button>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* ─── Campaign Content ────────────────────────────────────────── */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Campaign Content</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <label className="mb-1 block text-sm font-medium">Big Idea</label>
-              <textarea
-                className="w-full rounded-md border border-rocket-border bg-white px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-rocket-blue"
-                rows={2}
-                placeholder="The single compelling concept that anchors the entire campaign"
-                value={form.bigIdea}
-                onChange={(e) => set("bigIdea", e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">Offer</label>
-              <textarea
-                className="w-full rounded-md border border-rocket-border bg-white px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-rocket-blue"
-                rows={2}
-                placeholder="The specific offer driving response (free estimate, discount, urgency)"
-                value={form.offerText}
-                onChange={(e) => set("offerText", e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">Radio Script</label>
-              <textarea
-                className="w-full rounded-md border border-rocket-border bg-white px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-rocket-blue"
-                rows={5}
-                placeholder="Paste the 30-second radio spot here"
-                value={form.radioScript}
-                onChange={(e) => set("radioScript", e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">Landing Page Headline</label>
-              <Input
-                placeholder="e.g. Get Your Free Roof Inspection Before Storm Season"
-                value={form.funnelHeadline}
-                onChange={(e) => set("funnelHeadline", e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">Landing Page Body</label>
-              <textarea
-                className="w-full rounded-md border border-rocket-border bg-white px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-rocket-blue"
-                rows={3}
-                placeholder="Key selling points and trust elements"
-                value={form.funnelBody}
-                onChange={(e) => set("funnelBody", e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">Follow-Up Summary</label>
-              <textarea
-                className="w-full rounded-md border border-rocket-border bg-white px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-rocket-blue"
-                rows={2}
-                placeholder="How we'll follow up: instant text, then day 1/3/7/14 touchpoints"
-                value={form.followUpSummary}
-                onChange={(e) => set("followUpSummary", e.target.value)}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* ─── Internal Notes ──────────────────────────────────────────── */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Internal Notes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <textarea
-              className="w-full rounded-md border border-rocket-border bg-white px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-rocket-blue"
-              rows={3}
-              placeholder="Notes for the rep — not shown to the client"
-              value={form.notes}
-              onChange={(e) => set("notes", e.target.value)}
-            />
-          </CardContent>
-        </Card>
-
-        {error && (
-          <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
-        )}
-
-        <div className="flex gap-3">
-          <Button type="submit" disabled={saving} className="flex-1">
-            {saving ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving…
-              </>
-            ) : (
-              <>
-                <FileText className="mr-2 h-4 w-4" />
-                Save Proposal
-              </>
-            )}
-          </Button>
-          <Link href="/dashboard/proposals">
-            <Button variant="outline" type="button">
-              Cancel
-            </Button>
-          </Link>
-        </div>
-      </form>
-    </div>
+    <NewProposalClient
+      sessions={sessions}
+      selectedSessionId={selectedSessionId}
+      prefilled={prefilled}
+    />
   );
 }
