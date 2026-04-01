@@ -49,7 +49,7 @@ export default async function PortalPage() {
     .order("created_at", { ascending: false })
     .limit(50);
 
-  let leads = (rawLeads ?? []) as LpLead[];
+  let leads = (rawLeads ?? []) as unknown as LpLead[];
 
   // Filter to this tenant's leads
   if (!isSuperAdmin && tenantId && leads.length > 0) {

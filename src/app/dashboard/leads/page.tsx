@@ -60,7 +60,7 @@ export default async function LeadsPage() {
     } | null;
   };
 
-  let leads = (rawLeads ?? []) as LpLead[];
+  let leads = (rawLeads ?? []) as unknown as LpLead[];
 
   // For non-super-admins: filter to sessions belonging to this tenant
   if (!isSuperAdmin && tenantId && leads.length > 0) {
