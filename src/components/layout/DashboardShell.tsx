@@ -11,17 +11,15 @@ interface DashboardShellProps {
 }
 
 export function DashboardShell({ userRole, brandName, children }: DashboardShellProps) {
-  const [mobileOpen,  setMobileOpen]  = useState(false);
-  const [collapsed,   setCollapsed]   = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsed,  setCollapsed]  = useState(false);
+  // mounted prevents hydration mismatch — localStorage is browser-only
+  const [mounted, setMounted] = useState(false);
 
-  // Restore desktop collapsed state from localStorage
   useEffect(() => {
+    // Read preference after first paint so server/client HTML match
     if (localStorage.getItem("sidebar-collapsed") === "true") setCollapsed(true);
-  }, []);
-
-  // Close mobile sidebar on route change (path change)
-  useEffect(() => {
-    setMobileOpen(false);
+    setMounted(true);
   }, []);
 
   function toggleCollapse() {
@@ -47,7 +45,7 @@ export function DashboardShell({ userRole, brandName, children }: DashboardShell
       <Sidebar
         userRole={userRole}
         brandName={brandName}
-        collapsed={collapsed}
+        collapsed={mounted && collapsed}
         mobileOpen={mobileOpen}
         onClose={() => setMobileOpen(false)}
         onToggleCollapse={toggleCollapse}
