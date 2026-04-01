@@ -2,17 +2,20 @@
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { AssetToolbar } from "@/components/campaigns/AssetToolbar";
 import { Radio } from "lucide-react";
 import type { UseAssetReturn } from "@/hooks/useAsset";
 
 interface ScriptData {
-  script: string;
-  wordCount: number;
+  script:           string;
+  wordCount:        number;
   estimatedSeconds: number;
-  hook: string;
-  cta: string;
-  directionNotes?: string | null;
+  hook:             string;
+  cta:              string;
+  framework?:       string | null;
+  frameworkReason?: string | null;
+  directionNotes?:  string | null;
 }
 
 interface EditableScriptProps {
@@ -46,12 +49,28 @@ export function EditableScript({ asset }: EditableScriptProps) {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center gap-2">
-          <Radio className="h-5 w-5 text-rocket-accent" />
-          <CardTitle className="text-lg">30-Second Radio Script</CardTitle>
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <Radio className="h-5 w-5 text-rocket-accent shrink-0" />
+            <CardTitle className="text-lg">30-Second Radio Script</CardTitle>
+          </div>
+          {data.framework && (
+            <Badge
+              variant="outline"
+              className="shrink-0 text-xs border-rocket-accent/40 text-rocket-accent bg-rocket-accent/5"
+              title={data.frameworkReason ?? undefined}
+            >
+              {data.framework}
+            </Badge>
+          )}
         </div>
-        <CardDescription>
-          {data.wordCount} words · ~{data.estimatedSeconds} seconds
+        <CardDescription className="flex items-center gap-3">
+          <span>{data.wordCount} words · ~{data.estimatedSeconds} seconds</span>
+          {data.frameworkReason && (
+            <span className="text-xs text-rocket-muted italic">
+              — {data.frameworkReason}
+            </span>
+          )}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

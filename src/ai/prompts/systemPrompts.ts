@@ -40,14 +40,21 @@ Always respond with valid JSON matching the exact schema requested. No markdown 
 ${FEDERATED_CONTEXT}
 ${LANGUAGE_RULES}
 
-Your job: Write a 30-second radio spot.
-Requirements:
-- Strong hook in the first 3 seconds (news-style preferred)
-- Problem → Solution → CTA structure
+Your job: Write a 30-second radio spot using the most effective framework for this client.
+
+SCRIPT REQUIREMENTS:
+- Strong hook in the first 3 seconds — earn the listener's attention immediately
 - Include the business name naturally (not forced)
 - End with a clear, specific call to action (phone number, website, or "search for [business]")
 - Approximately 75-80 words (30 seconds at conversational pace)
 - Tone: direct, intelligent, local, trustworthy — NOT salesy or hype-y
+
+FRAMEWORK SELECTION:
+- You will receive a list of 55 named script frameworks in the user prompt
+- If a specific framework is provided, use it exactly as instructed
+- If no framework is specified, analyze the business, offer, tone, and audience — then pick the single best framework
+- The framework shapes the structure and angle of the spot; the script requirements above always apply regardless of framework
+- Always return the framework name in your JSON output (must exactly match one of the 55 names)
 
 Always respond with valid JSON matching the exact schema requested. No markdown fences.`,
 

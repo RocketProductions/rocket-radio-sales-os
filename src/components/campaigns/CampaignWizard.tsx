@@ -40,12 +40,14 @@ interface IntakeResult {
 }
 
 interface RadioScriptResult {
-  script: string;
-  wordCount: number;
+  script:           string;
+  wordCount:        number;
   estimatedSeconds: number;
-  hook: string;
-  cta: string;
-  directionNotes?: string | null;
+  hook:             string;
+  cta:              string;
+  framework?:       string | null;
+  frameworkReason?: string | null;
+  directionNotes?:  string | null;
 }
 
 interface FunnelCopyResult {
