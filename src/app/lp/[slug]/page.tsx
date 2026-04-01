@@ -2,12 +2,13 @@ import { notFound } from "next/navigation";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { LeadForm } from "@/components/lp/LeadForm";
 
-export const revalidate = 60; // ISR — rebuild every 60s after publish
+export const revalidate = 60;
 
 interface LandingPage {
   id: string;
   slug: string;
   business_name: string | null;
+  brand_kit_id: string | null;
   content: {
     headline?: string;
     subheadline?: string;
@@ -26,7 +27,7 @@ interface LandingPage {
   is_live: boolean;
 }
 
-export default async function LandingPage({
+export default async function LandingPageRoute({
   params,
 }: {
   params: Promise<{ slug: string }>;
@@ -45,6 +46,23 @@ export default async function LandingPage({
 
   const page = data as LandingPage;
   const { content, brand_colors: colors } = page;
+
+  // Fetch tracking fields from brand_kits if linked
+  let trackingPhone: string | null = null;
+  let metaPixelId: string | null = null;
+
+  if (page.brand_kit_id) {
+    const { data: bk } = await supabase
+      .from("brand_kits")
+      .select("tracking_phone, meta_pixel_id")
+      .eq("id", page.brand_kit_id)
+      .single();
+
+    if (bk) {
+      trackingPhone = (bk as { tracking_phone: string | null }).tracking_phone;
+      metaPixelId = (bk as { meta_pixel_id: string | null }).meta_pixel_id;
+    }
+  }
 
   const primary   = colors.primaryColor   ?? "#1e40af";
   const accent    = colors.accentColor    ?? "#f97316";
@@ -81,6 +99,26 @@ export default async function LandingPage({
         .lp-check { color: var(--lp-accent); }
       `}</style>
 
+      {/* Meta Pixel */}
+      {metaPixelId && (
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              !function(f,b,e,v,n,t,s)
+              {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+              n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+              if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+              n.queue=[];t=b.createElement(e);t.async=!0;
+              t.src=v;s=b.getElementsByTagName(e)[0];
+              s.parentNode.insertBefore(t,s)}(window, document,'script',
+              'https://connect.facebook.net/en_US/fbevents.js');
+              fbq('init', '${metaPixelId}');
+              fbq('track', 'PageView');
+            `,
+          }}
+        />
+      )}
+
       <div className="min-h-screen bg-white font-sans">
 
         {/* ── Sticky nav ── */}
@@ -98,12 +136,26 @@ export default async function LandingPage({
                 <span className="text-xl font-bold text-white">{businessName}</span>
               )}
             </div>
-            <a
-              href="#lead-form"
-              className="lp-btn hidden sm:inline-flex items-center rounded-full px-5 py-2 text-sm font-semibold shadow-lg"
-            >
-              {ctaText}
-            </a>
+            <div className="flex items-center gap-3">
+              {/* Click-to-call — visible on all sizes when tracking phone exists */}
+              {trackingPhone && (
+                <a
+                  href={`tel:${trackingPhone.replace(/[^\d+]/g, "")}`}
+                  className="inline-flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 text-sm font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/30"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
+                  </svg>
+                  Call Now
+                </a>
+              )}
+              <a
+                href="#lead-form"
+                className="lp-btn hidden sm:inline-flex items-center rounded-full px-5 py-2 text-sm font-semibold shadow-lg"
+              >
+                {ctaText}
+              </a>
+            </div>
           </div>
         </header>
 
@@ -132,6 +184,19 @@ export default async function LandingPage({
                     ))}
                   </ul>
                 )}
+
+                {/* Click-to-call prominent on mobile */}
+                {trackingPhone && (
+                  <a
+                    href={`tel:${trackingPhone.replace(/[^\d+]/g, "")}`}
+                    className="lp-btn mt-4 inline-flex items-center gap-2 rounded-full px-6 py-3 text-base font-bold shadow-lg md:hidden"
+                  >
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
+                    </svg>
+                    Call {businessName}
+                  </a>
+                )}
               </div>
 
               {/* Lead form */}
@@ -145,6 +210,8 @@ export default async function LandingPage({
                   accentColor={accent}
                   businessName={businessName}
                   shareText={`I just connected with ${businessName}! ${headline} — check out their offer:`}
+                  showReferralSource
+                  metaPixelId={metaPixelId ?? undefined}
                 />
               </div>
             </div>
@@ -185,12 +252,25 @@ export default async function LandingPage({
           <p className="text-white/80 mb-6">
             Don&apos;t wait — {businessName} is ready to help you today.
           </p>
-          <a
-            href="#lead-form"
-            className="lp-btn inline-flex items-center rounded-full px-8 py-3 text-base font-bold shadow-lg"
-          >
-            {ctaText}
-          </a>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <a
+              href="#lead-form"
+              className="lp-btn inline-flex items-center rounded-full px-8 py-3 text-base font-bold shadow-lg"
+            >
+              {ctaText}
+            </a>
+            {trackingPhone && (
+              <a
+                href={`tel:${trackingPhone.replace(/[^\d+]/g, "")}`}
+                className="inline-flex items-center gap-2 rounded-full bg-white/20 px-6 py-3 text-base font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/30"
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
+                </svg>
+                Or Call Us
+              </a>
+            )}
+          </div>
         </section>
 
         {/* ── Footer ── */}

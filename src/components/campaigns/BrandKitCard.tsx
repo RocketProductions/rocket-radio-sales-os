@@ -135,6 +135,9 @@ export function BrandKitCard({
     targetAudience:      kit.targetAudience      ?? "",
     uniqueValueProp:     kit.uniqueValueProp     ?? "",
     industry:            kit.industry            ?? "",
+    trackingPhone:       (kit as Record<string, unknown>).trackingPhone as string ?? "",
+    metaPixelId:         (kit as Record<string, unknown>).metaPixelId   as string ?? "",
+    smsKeyword:          (kit as Record<string, unknown>).smsKeyword    as string ?? "",
   });
 
   // Draft state (what's being edited)
@@ -183,6 +186,9 @@ export function BrandKitCard({
           targetAudience:      draft.targetAudience  || undefined,
           uniqueValueProp:     draft.uniqueValueProp || undefined,
           industry:            draft.industry        || undefined,
+          trackingPhone:       draft.trackingPhone   || null,
+          metaPixelId:         draft.metaPixelId     || null,
+          smsKeyword:          draft.smsKeyword      || null,
         }),
       });
       const json = await res.json() as { ok: boolean; error?: string };
@@ -378,6 +384,44 @@ export function BrandKitCard({
             />
           </div>
 
+          {/* ── Campaign tracking fields ─────────────────────────── */}
+          <div className="border-t border-rocket-border pt-4 space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-rocket-muted">Campaign Tracking</p>
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-rocket-muted">Tracking Phone Number</label>
+              <Input
+                value={draft.trackingPhone}
+                onChange={(e) => setDraftField("trackingPhone", e.target.value)}
+                placeholder="(574) 555-0100 — dedicated call tracking number"
+                className="text-xs"
+              />
+              <p className="text-[10px] text-rocket-muted">Shows on landing page as click-to-call. Attributes calls to this campaign.</p>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-rocket-muted">Meta Pixel ID</label>
+              <Input
+                value={draft.metaPixelId}
+                onChange={(e) => setDraftField("metaPixelId", e.target.value)}
+                placeholder="123456789012345"
+                className="text-xs font-mono"
+              />
+              <p className="text-[10px] text-rocket-muted">Auto-injected on landing page for retargeting visitors who don&apos;t convert.</p>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-rocket-muted">SMS Keyword</label>
+              <Input
+                value={draft.smsKeyword}
+                onChange={(e) => setDraftField("smsKeyword", e.target.value.toUpperCase())}
+                placeholder="ROOF"
+                className="text-xs font-mono uppercase"
+              />
+              <p className="text-[10px] text-rocket-muted">Radio CTA: &ldquo;Text {draft.smsKeyword || "KEYWORD"} to 55555&rdquo; — auto-replies with landing page link.</p>
+            </div>
+          </div>
+
           {saveError && (
             <p className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-600">{saveError}</p>
           )}
@@ -510,6 +554,30 @@ export function BrandKitCard({
             <p className="text-xs text-rocket-dark">{view.uniqueValueProp}</p>
           </div>
         </div>
+
+        {/* Campaign tracking */}
+        {(view.trackingPhone || view.metaPixelId || view.smsKeyword) && (
+          <div className="grid gap-2 sm:grid-cols-3 pt-1 border-t border-rocket-border">
+            {view.trackingPhone && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-rocket-muted mb-0.5">Tracking Phone</p>
+                <p className="text-xs text-rocket-dark font-mono">{view.trackingPhone}</p>
+              </div>
+            )}
+            {view.metaPixelId && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-rocket-muted mb-0.5">Meta Pixel</p>
+                <p className="text-xs text-rocket-dark font-mono">{view.metaPixelId}</p>
+              </div>
+            )}
+            {view.smsKeyword && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-rocket-muted mb-0.5">SMS Keyword</p>
+                <p className="text-xs text-rocket-dark font-mono">{view.smsKeyword}</p>
+              </div>
+            )}
+          </div>
+        )}
 
         <p className="text-xs text-rocket-muted italic pt-1">
           This brand context is woven into every AI generation below.

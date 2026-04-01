@@ -21,6 +21,9 @@ const PatchSchema = z.object({
   industry:            z.string().min(1).optional(),
   fontHeadline:        z.string().nullish(),
   fontBody:            z.string().nullish(),
+  trackingPhone:       z.string().nullish(),
+  metaPixelId:         z.string().nullish(),
+  smsKeyword:          z.string().nullish(),
 });
 
 interface RouteContext {
@@ -69,6 +72,9 @@ export async function PATCH(req: Request, { params }: RouteContext) {
     if (body.industry            !== undefined) updates.industry             = body.industry;
     if (body.fontHeadline        !== undefined) updates.font_headline        = body.fontHeadline;
     if (body.fontBody            !== undefined) updates.font_body            = body.fontBody;
+    if (body.trackingPhone       !== undefined) updates.tracking_phone       = body.trackingPhone;
+    if (body.metaPixelId         !== undefined) updates.meta_pixel_id        = body.metaPixelId;
+    if (body.smsKeyword          !== undefined) updates.sms_keyword          = body.smsKeyword;
 
     if (Object.keys(updates).length === 0) {
       return NextResponse.json({ ok: false, error: "Nothing to update" }, { status: 400 });
