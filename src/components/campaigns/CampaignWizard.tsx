@@ -14,7 +14,7 @@ import { AssetToolbar } from "@/components/campaigns/AssetToolbar";
 import { useAsset, type AssetSeed } from "@/hooks/useAsset";
 import {
   Loader2, Sparkles, CheckCircle2, Radio, FileText,
-  MessageSquare, Globe, AlertCircle, Send, ExternalLink, Copy, Check, ClipboardList,
+  MessageSquare, Globe, AlertCircle, Send, ExternalLink, Copy, Check, ClipboardList, Download,
 } from "lucide-react";
 import Link from "next/link";
 import type { BrandKit } from "@/ai/modes/brandAnalysis";
@@ -905,7 +905,7 @@ export function CampaignWizard({ initialData }: { initialData?: InitialSessionDa
           </CardHeader>
           <CardContent className="space-y-4">
             {liveUrl ? (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <p className="text-sm text-rocket-success font-medium flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 shrink-0" />
                   Landing page is live!
@@ -914,16 +914,45 @@ export function CampaignWizard({ initialData }: { initialData?: InitialSessionDa
                   <input
                     readOnly
                     value={liveUrl}
-                    className="flex-1 rounded-md border border-rocket-border bg-rocket-bg px-3 py-2 text-sm font-mono text-rocket-muted"
+                    className="flex-1 rounded-lg border border-rocket-border bg-rocket-bg px-3 py-2 text-sm font-mono text-rocket-muted"
                   />
+                  <button
+                    onClick={() => { navigator.clipboard.writeText(liveUrl); }}
+                    className="shrink-0 inline-flex items-center rounded-lg border border-rocket-border bg-white px-3 py-1.5 text-sm font-medium text-rocket-dark hover:bg-rocket-bg transition-colors"
+                    title="Copy URL"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </button>
                   <a
                     href={liveUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="shrink-0 inline-flex items-center rounded-md border border-rocket-border bg-white px-3 py-1.5 text-sm font-medium text-rocket-dark hover:bg-rocket-bg transition-colors"
+                    className="shrink-0 inline-flex items-center rounded-lg border border-rocket-border bg-white px-3 py-1.5 text-sm font-medium text-rocket-dark hover:bg-rocket-bg transition-colors"
                   >
-                    <ExternalLink className="mr-1.5 h-4 w-4" />View Page
+                    <ExternalLink className="mr-1.5 h-4 w-4" />View
                   </a>
+                </div>
+                {/* QR Code — for proposals, print materials, etc. */}
+                <div className="flex items-start gap-4 rounded-xl border border-rocket-border bg-rocket-bg/50 p-4">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(liveUrl)}`}
+                    alt="QR code for landing page"
+                    className="h-[120px] w-[120px] rounded-lg border border-white shadow-sm shrink-0"
+                  />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-rocket-dark">QR Code</p>
+                    <p className="mt-0.5 text-xs text-rocket-muted">
+                      Add this to proposals, business cards, or print materials. Scans go directly to the landing page.
+                    </p>
+                    <a
+                      href={`https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(liveUrl)}`}
+                      download={`qr-${slug}.png`}
+                      className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-rocket-border bg-white px-3 py-1.5 text-xs font-medium text-rocket-dark hover:bg-rocket-bg transition-colors"
+                    >
+                      <Download className="h-3 w-3" />Download PNG
+                    </a>
+                  </div>
                 </div>
               </div>
             ) : (

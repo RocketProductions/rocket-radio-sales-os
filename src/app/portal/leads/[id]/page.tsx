@@ -93,7 +93,7 @@ export default async function PortalLeadDetailPage({ params }: PageProps) {
   const displayName = lp.name || "Unknown";
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-6 max-w-2xl animate-fade-in-up">
       {/* Back */}
       <Link
         href="/portal"
@@ -105,9 +105,13 @@ export default async function PortalLeadDetailPage({ params }: PageProps) {
 
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold text-rocket-dark">{displayName}</h1>
-          <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-rocket-muted">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-rocket-blue/10 text-sm font-semibold text-rocket-blue">
+            {(displayName)[0].toUpperCase()}
+          </div>
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight text-rocket-dark">{displayName}</h1>
+            <div className="mt-0.5 flex flex-wrap items-center gap-3 text-sm text-rocket-muted">
             {lp.phone && (
               <a href={`tel:${lp.phone}`} className="flex items-center gap-1 hover:text-rocket-dark">
                 <Phone className="h-3.5 w-3.5" />
@@ -124,6 +128,7 @@ export default async function PortalLeadDetailPage({ params }: PageProps) {
               <Calendar className="h-3.5 w-3.5" />
               {new Date(lp.created_at).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })}
             </span>
+          </div>
           </div>
         </div>
         <div className="flex items-center gap-2">
