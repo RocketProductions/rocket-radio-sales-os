@@ -267,8 +267,8 @@ export function LeadForm({
         ) : ctaText}
       </button>
 
-      <p className="text-center text-xs text-slate-400">
-        No spam. We&apos;ll only use this to follow up on your request.
+      <p className="text-center text-xs text-slate-400 leading-relaxed">
+        By submitting, you agree to receive text messages and emails from {businessName} regarding your request. Msg &amp; data rates may apply. Reply STOP to opt out.
       </p>
     </form>
   );
