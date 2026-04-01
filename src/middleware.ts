@@ -30,6 +30,8 @@ const PUBLIC_ROUTES = [
   "/api/review",         // review session API (create + respond)
   "/api/lp",             // landing page publish + lead capture
   "/api/social/callback", // OAuth callbacks come from external platforms (no cookie)
+  "/privacy",            // Privacy policy — public
+  "/terms",              // Terms & conditions — public
 ];
 
 // Routes that require rep/admin/super_admin role

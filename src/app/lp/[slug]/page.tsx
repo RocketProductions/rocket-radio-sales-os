@@ -274,10 +274,15 @@ export default async function LandingPageRoute({
         </section>
 
         {/* ── Footer ── */}
-        <footer className="bg-slate-900 px-6 py-5 text-center">
+        <footer className="bg-slate-900 px-6 py-5 text-center space-y-2">
           <p className="text-xs text-slate-500">
             &copy; {new Date().getFullYear()} {businessName}. Campaign powered by{" "}
             <span className="text-slate-400">Federated Media</span>.
+          </p>
+          <p className="text-xs text-slate-600">
+            <a href="/privacy" className="hover:text-slate-400 transition-colors">Privacy Policy</a>
+            {" · "}
+            <a href="/terms" className="hover:text-slate-400 transition-colors">Terms &amp; Conditions</a>
           </p>
         </footer>
       </div>
