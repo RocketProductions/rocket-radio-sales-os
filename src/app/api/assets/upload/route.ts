@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import { extractText } from "@/lib/documentExtractor";
 import { randomUUID } from "crypto";
 
 export const runtime = "nodejs";
@@ -39,6 +40,18 @@ export async function POST(req: Request) {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
+    // ── Text extraction (documents only — non-fatal) ──────────────────────
+    let extractedText: string | null = null;
+    let extractionStatus: "extracted" | "unsupported" | "failed" | "pending" = "pending";
+
+    if (category === "document") {
+      const result = await extractText(buffer, file.type, file.name);
+      extractedText   = result.text;
+      extractionStatus = result.status;
+    } else {
+      extractionStatus = "unsupported"; // logos and photos don't yield text
+    }
+
     const supabase = getSupabaseAdmin();
 
     const { error: storageError } = await supabase.storage
@@ -68,6 +81,8 @@ export async function POST(req: Request) {
         note_content: null,
         owner_type: ownerType,
         tags: [],
+        extracted_text: extractedText,
+        extraction_status: extractionStatus,
       })
       .select()
       .single();
@@ -89,6 +104,7 @@ export async function POST(req: Request) {
         file_size: asset.file_size,
         storage_path: asset.storage_path,
         created_at: asset.created_at,
+        extracted_text: extractedText ? true : false, // boolean hint for UI
       },
     });
   } catch (err) {

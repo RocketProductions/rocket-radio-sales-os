@@ -3,12 +3,16 @@ import { z } from "zod";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
 const CreateSchema = z.object({
-  sessionId: z.string().uuid(),
-  assetType: z.enum(["brief", "radio-script", "funnel-copy", "follow-up-sequence"]),
-  content: z.record(z.unknown()),
+  sessionId:    z.string().uuid(),
+  assetType:    z.enum(["brief", "radio-script", "funnel-copy", "follow-up-sequence"]),
+  content:      z.record(z.unknown()),
   businessName: z.string().optional(),
-  brandKitId: z.string().uuid().optional(),
-  campaignId: z.string().uuid().optional(),
+  brandKitId:   z.string().uuid().optional(),
+  campaignId:   z.string().uuid().optional(),
+  // Self-improvement fields — stored for future example retrieval
+  industry:     z.string().optional(),
+  bigIdea:      z.string().optional(),
+  campaignType: z.string().optional(),
 });
 
 export async function POST(req: Request) {
@@ -19,14 +23,17 @@ export async function POST(req: Request) {
     const { data, error } = await supabase
       .from("campaign_assets")
       .insert({
-        session_id: body.sessionId,
-        asset_type: body.assetType,
-        content: body.content,
+        session_id:    body.sessionId,
+        asset_type:    body.assetType,
+        content:       body.content,
         business_name: body.businessName ?? null,
-        brand_kit_id: body.brandKitId ?? null,
-        campaign_id: body.campaignId ?? null,
-        status: "draft",
-        version: 1,
+        brand_kit_id:  body.brandKitId ?? null,
+        campaign_id:   body.campaignId ?? null,
+        status:        "draft",
+        version:       1,
+        industry:      body.industry ?? null,
+        big_idea:      body.bigIdea ?? null,
+        campaign_type: body.campaignType ?? null,
       })
       .select("id, status")
       .single();

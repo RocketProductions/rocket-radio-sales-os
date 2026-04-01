@@ -263,9 +263,13 @@ export function CampaignWizard({ initialData }: { initialData?: InitialSessionDa
     setGeneratingKey(key);
     setGenerateError("");
     try {
-      const enriched = brandKit
-        ? { ...input, brandContext: formatBrandContext(brandKit) }
-        : input;
+      // Always inject: brand context, sessionId (for doc lookup), industry (for examples)
+      const enriched: Record<string, unknown> = {
+        ...input,
+        sessionId: sessionId,
+        industry:  form.industry || input.industry,
+      };
+      if (brandKit) enriched.brandContext = formatBrandContext(brandKit);
       const result = await generate<T>(mode, enriched);
       onSuccess(result, brandKitId);
     } catch (err) {
@@ -314,50 +318,62 @@ export function CampaignWizard({ initialData }: { initialData?: InitialSessionDa
   // ── Handlers ──────────────────────────────────────────────────────────────
   function handleBrief() {
     runGenerate<IntakeResult>("brief", "client-intake", {
-      businessName: form.businessName,
-      industry: form.industry,
-      website: form.website || undefined,
-      primaryGoal: form.primaryGoal,
+      businessName:   form.businessName,
+      industry:       form.industry,
+      website:        form.website || undefined,
+      primaryGoal:    form.primaryGoal,
       targetAudience: form.targetAudience || undefined,
-      offer: form.offer || undefined,
-      seasonality: form.seasonality || undefined,
+      offer:          form.offer || undefined,
+      seasonality:    form.seasonality || undefined,
     }, async (result, bkId) => {
       await briefAsset.saveNew(result, {
         businessName: form.businessName,
-        brandKitId: bkId ?? undefined,
+        brandKitId:   bkId ?? undefined,
+        industry:     form.industry,
+        bigIdea:      result.bigIdea,
+        campaignType: result.campaignType,
       });
       briefAsset.setEditMode(false);
-      // Register session on first asset save
-      if (!sessionRegistered) {
-        await registerSession();
-      }
+      if (!sessionRegistered) await registerSession();
     });
   }
 
   function handleScript() {
     runGenerate<RadioScriptResult>("script", "radio-script", {
-      businessName: form.businessName,
-      industry: form.industry,
-      offer: brief?.offerDefinition.offer ?? form.offer,
+      businessName:   form.businessName,
+      industry:       form.industry,
+      offer:          brief?.offerDefinition.offer ?? form.offer,
       targetAudience: (brief?.targetAudience.primary ?? form.targetAudience) || undefined,
+      // Brief context flows downstream
+      bigIdea:        brief?.bigIdea,
+      campaignType:   brief?.campaignType,
+      offerScore:     brief?.offerDefinition.score,
     }, async (result, bkId) => {
       await scriptAsset.saveNew(result, {
         businessName: form.businessName,
-        brandKitId: bkId ?? undefined,
+        brandKitId:   bkId ?? undefined,
+        industry:     form.industry,
+        bigIdea:      brief?.bigIdea,
+        campaignType: brief?.campaignType,
       });
     });
   }
 
   function handleFunnel() {
     runGenerate<FunnelCopyResult>("funnel", "funnel-copy", {
-      businessName: form.businessName,
-      industry: form.industry,
-      offer: brief?.offerDefinition.offer ?? form.offer,
+      businessName:   form.businessName,
+      industry:       form.industry,
+      offer:          brief?.offerDefinition.offer ?? form.offer,
       targetAudience: (brief?.targetAudience.primary ?? form.targetAudience) || undefined,
+      bigIdea:        brief?.bigIdea,
+      campaignType:   brief?.campaignType,
     }, async (result, bkId) => {
       await funnelAsset.saveNew(result, {
         businessName: form.businessName,
-        brandKitId: bkId ?? undefined,
+        brandKitId:   bkId ?? undefined,
+        industry:     form.industry,
+        bigIdea:      brief?.bigIdea,
+        campaignType: brief?.campaignType,
       });
     });
   }
@@ -365,12 +381,17 @@ export function CampaignWizard({ initialData }: { initialData?: InitialSessionDa
   function handleFollowUp() {
     runGenerate<FollowUpResult>("followup", "follow-up-sequence", {
       businessName: form.businessName,
-      industry: form.industry,
-      offer: brief?.offerDefinition.offer ?? form.offer,
+      industry:     form.industry,
+      offer:        brief?.offerDefinition.offer ?? form.offer,
+      bigIdea:      brief?.bigIdea,
+      campaignType: brief?.campaignType,
     }, async (result, bkId) => {
       await followUpAsset.saveNew(result, {
         businessName: form.businessName,
-        brandKitId: bkId ?? undefined,
+        brandKitId:   bkId ?? undefined,
+        industry:     form.industry,
+        bigIdea:      brief?.bigIdea,
+        campaignType: brief?.campaignType,
       });
     });
   }

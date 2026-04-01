@@ -10,17 +10,22 @@ export interface AssetSeed<T> {
   status: AssetStatus;
 }
 
+export interface AssetMeta {
+  businessName?: string;
+  brandKitId?:   string;
+  industry?:     string;
+  bigIdea?:      string;
+  campaignType?: string;
+}
+
 export interface UseAssetReturn<T> {
   data: T | null;
   dbId: string | null;
   status: AssetStatus;
   editMode: boolean;
   setEditMode: (v: boolean) => void;
-  /** Call after AI generation — saves to DB and returns the db ID */
-  saveNew: (content: T, meta?: { businessName?: string; brandKitId?: string }) => Promise<string | null>;
-  /** Call after user edits — patches editedContent in DB */
+  saveNew: (content: T, meta?: AssetMeta) => Promise<string | null>;
   saveEdits: (editedContent: Record<string, unknown>) => Promise<void>;
-  /** Mark asset as approved */
   approve: () => Promise<void>;
 }
 
@@ -29,13 +34,13 @@ export function useAsset<T>(
   sessionId: string,
   seed?: AssetSeed<T>
 ): UseAssetReturn<T> {
-  const [data, setData] = useState<T | null>(seed?.data ?? null);
-  const [dbId, setDbId] = useState<string | null>(seed?.dbId ?? null);
-  const [status, setStatus] = useState<AssetStatus>(seed?.status ?? "unsaved");
+  const [data, setData]       = useState<T | null>(seed?.data ?? null);
+  const [dbId, setDbId]       = useState<string | null>(seed?.dbId ?? null);
+  const [status, setStatus]   = useState<AssetStatus>(seed?.status ?? "unsaved");
   const [editMode, setEditMode] = useState(false);
 
   const saveNew = useCallback(
-    async (content: T, meta?: { businessName?: string; brandKitId?: string }) => {
+    async (content: T, meta?: AssetMeta) => {
       setData(content);
       setStatus("saving");
       try {
@@ -47,7 +52,10 @@ export function useAsset<T>(
             assetType,
             content,
             businessName: meta?.businessName,
-            brandKitId: meta?.brandKitId,
+            brandKitId:   meta?.brandKitId,
+            industry:     meta?.industry,
+            bigIdea:      meta?.bigIdea,
+            campaignType: meta?.campaignType,
           }),
         });
         const json = await res.json();
