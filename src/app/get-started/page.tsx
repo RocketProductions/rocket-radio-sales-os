@@ -86,11 +86,38 @@ export default function GetStartedPage() {
             <a href="tel:2604475511" className="text-lg font-bold text-white hover:text-[#D4A853] transition-colors">(260) 447-5511</a>
           </div>
 
-          {email && (
-            <p className="mt-6 text-xs text-white/20">
-              We sent a confirmation to {email}
-            </p>
-          )}
+          {email && (() => {
+            const domain = email.split("@")[1]?.toLowerCase() ?? "";
+            const providers: Record<string, { label: string; url: string }> = {
+              "gmail.com":      { label: "Open Gmail",   url: "https://mail.google.com" },
+              "googlemail.com": { label: "Open Gmail",   url: "https://mail.google.com" },
+              "outlook.com":    { label: "Open Outlook", url: "https://outlook.live.com" },
+              "hotmail.com":    { label: "Open Outlook", url: "https://outlook.live.com" },
+              "live.com":       { label: "Open Outlook", url: "https://outlook.live.com" },
+              "yahoo.com":      { label: "Open Yahoo Mail", url: "https://mail.yahoo.com" },
+              "icloud.com":     { label: "Open iCloud Mail", url: "https://www.icloud.com/mail" },
+            };
+            const provider = providers[domain];
+            return (
+              <div className="mt-6 text-center">
+                <p className="text-xs text-white/30 mb-3">
+                  We sent a confirmation to <span className="text-white/50">{email}</span>
+                </p>
+                {provider ? (
+                  <a
+                    href={provider.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="glass-gold inline-flex items-center gap-2 rounded-xl px-6 py-2.5 text-sm font-semibold text-[#D4A853] transition-all hover:shadow-lg hover:shadow-[#D4A853]/10"
+                  >
+                    {provider.label} &rarr;
+                  </a>
+                ) : (
+                  <p className="text-xs text-white/20">Check your inbox for details on what happens next.</p>
+                )}
+              </div>
+            );
+          })()}
 
           <Link href="/" className="mt-6 inline-block text-sm text-white/30 hover:text-white/60 transition-colors">
             &larr; Back to homepage
