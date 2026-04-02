@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Rocket, Loader2, CheckCircle2, Radio, Zap, BarChart2, Users } from "lucide-react";
+import { Loader2, CheckCircle2, Radio, Zap, BarChart2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -72,9 +72,8 @@ export default function GetStartedPage() {
       <header className="border-b border-rocket-border bg-white/80 backdrop-blur-md px-6 py-4">
         <div className="mx-auto flex max-w-5xl items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rocket-accent-bright/10">
-              <Rocket className="h-4 w-4 text-rocket-accent" />
-            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.png" alt="Rocket Radio" className="h-6 w-6 rounded" />
             <span className="text-sm font-semibold text-rocket-dark">Rocket Radio</span>
           </div>
           <a href="/login" className="text-sm text-rocket-muted hover:text-rocket-dark transition-colors">

@@ -13,7 +13,7 @@
 
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { sendText, sendEmail } from "./actions";
-import { DEFAULT_SEQUENCE, type LeadContext } from "./sequences";
+import { DEFAULT_SEQUENCE, type LeadContext, type SequenceStep } from "./sequences";
 
 type LeadRow = {
   id: string;
@@ -75,6 +75,69 @@ async function fetchLead(leadId: string): Promise<LeadRow | null> {
   return null;
 }
 
+/**
+ * Try to load the AI-generated follow-up sequence for this lead's campaign.
+ * Returns a custom sequence if one exists, otherwise null (use DEFAULT_SEQUENCE).
+ */
+async function loadCustomSequence(leadId: string): Promise<SequenceStep[] | null> {
+  try {
+    const supabase = getSupabaseAdmin();
+
+    // Find the session_id via the lead's landing page
+    const { data: lead } = await supabase
+      .from("lp_leads")
+      .select("landing_pages ( session_id )")
+      .eq("id", leadId)
+      .single();
+
+    const sessionId = (lead as unknown as { landing_pages: { session_id: string | null } | null })
+      ?.landing_pages?.session_id;
+    if (!sessionId) return null;
+
+    // Find the AI-generated follow-up sequence asset for this session
+    const { data: asset } = await supabase
+      .from("campaign_assets")
+      .select("content, edited_content")
+      .eq("session_id", sessionId)
+      .eq("asset_type", "follow-up-sequence")
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!asset) return null;
+
+    const a = asset as { content: Record<string, unknown>; edited_content: Record<string, unknown> | null };
+    const content = a.edited_content ?? a.content;
+    const messages = content.messages as Array<{
+      step: number; channel: "text" | "email"; timing: string;
+      subject: string | null; body: string;
+    }> | undefined;
+
+    if (!messages || messages.length === 0) return null;
+
+    // Map AI messages to SequenceStep format
+    const timingToDelay: Record<string, number> = {
+      "Instant": 0, "within 60 sec": 0, "instant": 0,
+      "Day 1": 1440, "day 1": 1440,
+      "Day 3": 4320, "day 3": 4320,
+      "Day 7": 10080, "day 7": 10080,
+      "Day 14": 20160, "day 14": 20160,
+    };
+
+    return messages.map((m) => ({
+      step: m.step,
+      delayMinutes: timingToDelay[m.timing] ?? DEFAULT_SEQUENCE[m.step - 1]?.delayMinutes ?? 0,
+      channel: m.channel as "text" | "email",
+      buildMessage: (ctx: LeadContext) => ({
+        subject: m.subject?.replace(/\{firstName\}/g, ctx.firstName).replace(/\{businessName\}/g, ctx.businessName) ?? undefined,
+        body: m.body.replace(/\{firstName\}/g, ctx.firstName).replace(/\{businessName\}/g, ctx.businessName),
+      }),
+    }));
+  } catch {
+    return null; // Fall back to default — never block automation
+  }
+}
+
 /** Mark lead as contacted after first response */
 async function markContacted(lead: LeadRow): Promise<void> {
   const supabase = getSupabaseAdmin();
@@ -104,9 +167,17 @@ export async function triggerAutoResponse(leadId: string): Promise<void> {
     offer: "our services",
   };
 
+  // Try AI-generated custom sequence, fall back to default
+  const customSequence = await loadCustomSequence(leadId);
+  const sequence = customSequence ?? DEFAULT_SEQUENCE;
+
+  if (customSequence) {
+    console.log(`[AUTO-RESPONSE] Using AI-generated sequence for lead ${leadId}`);
+  }
+
   const now = new Date();
 
-  for (const step of DEFAULT_SEQUENCE) {
+  for (const step of sequence) {
     const scheduledFor = new Date(now.getTime() + step.delayMinutes * 60_000);
 
     if (step.delayMinutes === 0) {
@@ -201,7 +272,10 @@ export async function processPendingAutomations(): Promise<number> {
       offer: "our services",
     };
 
-    const step = DEFAULT_SEQUENCE.find((s) => s.step === run.sequence_step);
+    // Try custom AI sequence, fall back to default
+    const customSeq = await loadCustomSequence(run.lead_id);
+    const seq = customSeq ?? DEFAULT_SEQUENCE;
+    const step = seq.find((s) => s.step === run.sequence_step);
     if (!step) continue;
 
     try {

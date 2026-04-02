@@ -1,5 +1,4 @@
 import { headers } from "next/headers";
-import { Rocket } from "lucide-react";
 import { resolveBranding, brandingToCss, getTenantIdFromCookie } from "@/lib/branding";
 import { PortalSignOutButton } from "@/components/portal/PortalSignOutButton";
 import { PortalThemeWrapper } from "@/components/portal/PortalThemeWrapper";
@@ -32,9 +31,8 @@ export default async function PortalLayout({ children }: { children: React.React
         <header className="sticky top-0 z-10 border-b border-rocket-border bg-white/80 backdrop-blur-md">
           <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-6">
             <div className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rocket-accent-bright/10">
-                <Rocket className="h-4 w-4 text-rocket-accent-bright" />
-              </div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo.png" alt="Rocket Radio" className="h-6 w-6 rounded" />
               <span className="text-sm font-semibold text-rocket-dark">Your Leads</span>
             </div>
             <div className="flex items-center gap-4">

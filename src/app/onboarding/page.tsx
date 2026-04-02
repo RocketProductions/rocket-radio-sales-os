@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Rocket, Check, Loader2, ArrowRight } from "lucide-react";
+import { Check, Loader2, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -131,7 +131,8 @@ export default function OnboardingPage() {
       <header className="border-b border-rocket-border bg-white px-6 py-4">
         <div className="mx-auto flex max-w-2xl items-center justify-between">
           <div className="flex items-center gap-2">
-            <Rocket className="h-6 w-6 text-rocket-accent" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.png" alt="Rocket Radio" className="h-6 w-6 rounded" />
             <span className="font-bold text-rocket-dark">Rocket Radio</span>
           </div>
           <a href="/login" className="text-sm text-rocket-muted hover:text-rocket-dark">

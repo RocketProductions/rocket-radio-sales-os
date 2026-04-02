@@ -12,7 +12,6 @@ import {
   FileText,
   Shield,
   LogOut,
-  Rocket,
   FileImage,
   Settings,
   X,
@@ -81,12 +80,8 @@ export function Sidebar({
         "flex h-14 shrink-0 items-center border-b border-rocket-border",
         collapsed ? "px-0 justify-center" : "px-4 gap-2.5"
       )}>
-        <div className={cn(
-          "flex items-center justify-center rounded-lg bg-rocket-accent-bright/10",
-          collapsed ? "h-8 w-8" : "h-8 w-8"
-        )}>
-          <Rocket className="h-4 w-4 shrink-0 text-rocket-accent-bright" />
-        </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo.png" alt="Rocket Radio" className="h-6 w-6 shrink-0 rounded" />
         {!collapsed && (
           <span className="truncate text-sm font-semibold text-rocket-dark">{brandName}</span>
         )}

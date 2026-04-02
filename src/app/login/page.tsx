@@ -2,7 +2,7 @@
 
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Rocket, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -56,9 +56,8 @@ function LoginForm() {
       <div className="w-full max-w-sm animate-fade-in-up">
         {/* Logo */}
         <div className="mb-8 flex flex-col items-center gap-3 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rocket-accent-bright/10 shadow-sm">
-            <Rocket className="h-6 w-6 text-rocket-accent-bright" />
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="Rocket Radio" className="h-12 w-12 rounded-2xl" />
           <div>
             <h1 className="text-xl font-semibold tracking-tight text-rocket-dark">Rocket Radio</h1>
             <p className="mt-1 text-sm text-rocket-muted">Sign in to your account</p>
