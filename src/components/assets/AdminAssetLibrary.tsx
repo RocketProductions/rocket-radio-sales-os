@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Building2, ChevronDown, ChevronRight, Landmark, Plus, FolderOpen } from "lucide-react";
+import { Building2, ChevronDown, ChevronRight, Landmark, Plus, FolderOpen, UploadCloud } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,9 +10,15 @@ import { AddNoteModal } from "./AddNoteModal";
 import { AdminAssetCard } from "./AdminAssetCard";
 import type { UploadedAsset } from "@/types/assets";
 
+interface ClientInfo {
+  sessionId: string;
+  businessName: string;
+}
+
 interface Props {
   initialAssets: UploadedAsset[];
   tenantId: string;
+  clients?: ClientInfo[];
 }
 
 type CategoryFilter = "all" | "logo" | "photo" | "document" | "note";
@@ -25,7 +31,7 @@ const FILTER_TABS: { value: CategoryFilter; label: string }[] = [
   { value: "note",     label: "Notes" },
 ];
 
-export function AdminAssetLibrary({ initialAssets }: Props) {
+export function AdminAssetLibrary({ initialAssets, clients }: Props) {
   const [assets, setAssets]               = useState<UploadedAsset[]>(initialAssets);
   const [category, setCategory]           = useState<CategoryFilter>("all");
   const [showNoteModal, setShowNoteModal] = useState(false);
@@ -57,6 +63,20 @@ export function AdminAssetLibrary({ initialAssets }: Props) {
     }
     const group = clientGroups.find((g) => g.sessionId === sid);
     if (group) group.items.push(asset);
+  }
+
+  // Add empty groups for clients that have no assets yet
+  if (clients) {
+    for (const client of clients) {
+      if (!seenSessions.has(client.sessionId)) {
+        seenSessions.add(client.sessionId);
+        clientGroups.push({
+          sessionId:    client.sessionId,
+          businessName: client.businessName,
+          items:        [],
+        });
+      }
+    }
   }
 
   // Apply category filter to each group
@@ -277,9 +297,19 @@ export function AdminAssetLibrary({ initialAssets }: Props) {
                   {!isCollapsed && (
                     <div className="p-4">
                       {group.items.length === 0 ? (
-                        <p className="text-sm text-rocket-muted py-4 text-center">
-                          No {category === "all" ? "" : category + " "}assets for this client.
-                        </p>
+                        <div className="py-6 text-center">
+                          <UploadCloud className="mx-auto h-8 w-8 text-rocket-border mb-2" />
+                          <p className="text-sm text-rocket-muted">
+                            No assets yet for {group.businessName}
+                          </p>
+                          <div className="mt-3 inline-block">
+                            <UploadDropZone
+                              onUploaded={handleUploaded}
+                              sessionId={group.sessionId === "__no_session__" ? undefined : group.sessionId}
+                              ownerType="client"
+                            />
+                          </div>
+                        </div>
                       ) : (
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                           {group.items.map((asset) => (

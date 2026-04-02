@@ -15,9 +15,10 @@ export default async function AssetsPage() {
   const tenantId    = headersList.get("x-tenant-id") ?? "default";
   const userRole    = headersList.get("x-user-role") ?? "";
   const isSuperAdmin = userRole === "super_admin";
+  const isInternal = ["super_admin", "admin", "manager", "rep", "executive"].includes(userRole);
 
-  // Non-admins: keep the original simple asset library
-  if (!isSuperAdmin) {
+  // External client users: simple asset library
+  if (!isInternal) {
     return (
       <div className="space-y-6">
         <div>
@@ -31,13 +32,19 @@ export default async function AssetsPage() {
     );
   }
 
-  // Admin: load ALL assets with session info, then group client-side
+  // Internal users: grouped by client with upload per client
   const supabase = getSupabaseAdmin();
 
-  const { data: rawAssets } = await supabase
+  let assetsQuery = supabase
     .from("brand_uploads")
     .select("*")
     .order("created_at", { ascending: false });
+
+  if (!isSuperAdmin && tenantId !== "default") {
+    assetsQuery = assetsQuery.eq("tenant_id", tenantId);
+  }
+
+  const { data: rawAssets } = await assetsQuery;
 
   const assets = (rawAssets ?? []) as UploadedAsset[];
 
@@ -78,15 +85,31 @@ export default async function AssetsPage() {
     })
   );
 
+  // Fetch all campaign sessions so every client shows up (even with no assets)
+  let sessionsQuery = supabase
+    .from("campaign_sessions")
+    .select("session_id, business_name")
+    .order("created_at", { ascending: false });
+
+  if (!isSuperAdmin && tenantId !== "default") {
+    sessionsQuery = sessionsQuery.eq("tenant_id", tenantId);
+  }
+
+  const { data: allSessions } = await sessionsQuery;
+  const clients = (allSessions ?? []).map((s: { session_id: string; business_name: string }) => ({
+    sessionId: s.session_id,
+    businessName: s.business_name,
+  }));
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-rocket-dark">Brand Asset Library</h1>
         <p className="text-rocket-muted">
-          Agency-owned assets and client media — organised by business.
+          Upload logos, photos, and documents for each client.
         </p>
       </div>
-      <AdminAssetLibrary initialAssets={enriched} tenantId={tenantId} />
+      <AdminAssetLibrary initialAssets={enriched} tenantId={tenantId} clients={clients} />
     </div>
   );
 }
