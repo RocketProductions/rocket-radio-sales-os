@@ -173,7 +173,7 @@ export default function GetStartedPage() {
               </div>
 
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-rocket-dark">
+                <label className="mb-1.5 block text-sm font-medium text-white/80">
                   Business Name <span className="text-rocket-danger">*</span>
                 </label>
                 <Input
@@ -181,11 +181,12 @@ export default function GetStartedPage() {
                   onChange={(e) => setBusinessName(e.target.value)}
                   placeholder="e.g. Rocky Road Roofing"
                   required
+                  className="bg-white/10 border-white/10 text-white placeholder:text-white/30 hover:border-white/20 focus-visible:ring-[#D4A853] focus-visible:ring-offset-[#030712]"
                 />
               </div>
 
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-rocket-dark">
+                <label className="mb-1.5 block text-sm font-medium text-white/80">
                   Website
                 </label>
                 <Input
@@ -193,22 +194,24 @@ export default function GetStartedPage() {
                   value={website}
                   onChange={(e) => setWebsite(e.target.value)}
                   placeholder="yourwebsite.com"
+                  className="bg-white/10 border-white/10 text-white placeholder:text-white/30 hover:border-white/20 focus-visible:ring-[#D4A853] focus-visible:ring-offset-[#030712]"
                 />
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="mb-1.5 block text-sm font-medium text-rocket-dark">
+                  <label className="mb-1.5 block text-sm font-medium text-white/80">
                     Your Name
                   </label>
                   <Input
                     value={contactName}
                     onChange={(e) => setContactName(e.target.value)}
                     placeholder="First and last"
+                    className="bg-white/10 border-white/10 text-white placeholder:text-white/30 hover:border-white/20 focus-visible:ring-[#D4A853] focus-visible:ring-offset-[#030712]"
                   />
                 </div>
                 <div>
-                  <label className="mb-1.5 block text-sm font-medium text-rocket-dark">
+                  <label className="mb-1.5 block text-sm font-medium text-white/80">
                     Phone
                   </label>
                   <Input
@@ -216,12 +219,13 @@ export default function GetStartedPage() {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="(574) 555-0100"
+                    className="bg-white/10 border-white/10 text-white placeholder:text-white/30 hover:border-white/20 focus-visible:ring-[#D4A853] focus-visible:ring-offset-[#030712]"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-rocket-dark">
+                <label className="mb-1.5 block text-sm font-medium text-white/80">
                   Email
                 </label>
                 <Input
@@ -229,11 +233,12 @@ export default function GetStartedPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@yourbusiness.com"
+                  className="bg-white/10 border-white/10 text-white placeholder:text-white/30 hover:border-white/20 focus-visible:ring-[#D4A853] focus-visible:ring-offset-[#030712]"
                 />
               </div>
 
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-rocket-dark">
+                <label className="mb-1.5 block text-sm font-medium text-white/80">
                   How did you hear about us?
                 </label>
                 <select
