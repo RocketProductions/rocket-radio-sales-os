@@ -17,6 +17,16 @@ export interface RawScrapeData {
   cssVariables: Record<string, string>; // --primary, --color-*, etc.
   canonicalUrl: string | null;
   phone: string | null;     // first US phone number found on the page
+  socialLinks: {             // social media profiles found on the page
+    facebook: string | null;
+    instagram: string | null;
+    twitter: string | null;
+    linkedin: string | null;
+    youtube: string | null;
+    tiktok: string | null;
+    yelp: string | null;
+    googleBusiness: string | null;
+  };
 }
 
 const FETCH_HEADERS = {
@@ -96,6 +106,7 @@ export async function scrapeWebsite(url: string): Promise<RawScrapeData> {
     cssVariables: extractCssVariables(allCssSource),
     canonicalUrl: extractCanonical(html),
     phone: extractPhone(html),
+    socialLinks: extractSocialLinks(html),
   };
 }
 
@@ -197,6 +208,37 @@ function extractCssVariables(source: string): Record<string, string> {
     }
   }
   return vars;
+}
+
+/** Extract social media profile links from anchor hrefs */
+function extractSocialLinks(html: string): RawScrapeData["socialLinks"] {
+  // Collect all href values from the page
+  const hrefs: string[] = [];
+  const hrefRe = /href=["']([^"']+)["']/gi;
+  let m: RegExpExecArray | null;
+  while ((m = hrefRe.exec(html)) !== null) {
+    hrefs.push(m[1]);
+  }
+
+  function find(patterns: RegExp[]): string | null {
+    for (const href of hrefs) {
+      for (const pattern of patterns) {
+        if (pattern.test(href)) return href;
+      }
+    }
+    return null;
+  }
+
+  return {
+    facebook:       find([/facebook\.com\/(?!sharer|share)[a-zA-Z0-9.]+/i]),
+    instagram:      find([/instagram\.com\/[a-zA-Z0-9_.]+/i]),
+    twitter:        find([/(?:twitter|x)\.com\/[a-zA-Z0-9_]+/i]),
+    linkedin:       find([/linkedin\.com\/(?:company|in)\/[a-zA-Z0-9-]+/i]),
+    youtube:        find([/youtube\.com\/(?:c\/|channel\/|@)[a-zA-Z0-9_-]+/i]),
+    tiktok:         find([/tiktok\.com\/@[a-zA-Z0-9_.]+/i]),
+    yelp:           find([/yelp\.com\/biz\/[a-zA-Z0-9-]+/i]),
+    googleBusiness: find([/(?:google\.com\/maps|g\.page|business\.google\.com)\/[^\s"']+/i]),
+  };
 }
 
 /** Extract the first US phone number from tel: links or visible text */

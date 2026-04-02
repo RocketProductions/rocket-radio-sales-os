@@ -143,6 +143,7 @@ Always respond with valid JSON matching the exact schema. No markdown fences.`;
         target_audience:      kit.targetAudience,
         unique_value_prop:    kit.uniqueValueProp,
         industry:             kit.industry,
+        social_links:         rawData.socialLinks,
         raw_meta: {
           title:           rawData.title,
           metaDescription: rawData.metaDescription,
@@ -173,6 +174,7 @@ Always respond with valid JSON matching the exact schema. No markdown fences.`;
       id:           (savedKit as { id?: string } | null)?.id ?? null,
       scrapedTitle: rawData.title,
       scrapedPhone: rawData.phone,
+      socialLinks:  rawData.socialLinks,
       intake,
       colorSource,  // 'logo' | 'css' | 'none' — useful for UI to show how colors were detected
     });

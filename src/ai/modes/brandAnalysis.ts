@@ -62,6 +62,12 @@ export function buildBrandAnalysisPrompt(data: RawScrapeData): string {
     Object.keys(data.cssVariables).length > 0
       ? `CSS Variables: ${Object.entries(data.cssVariables).slice(0, 10).map(([k, v]) => `${k}: ${v}`).join(", ")}`
       : null,
+    (() => {
+      const social = Object.entries(data.socialLinks ?? {}).filter(([, v]) => v) as [string, string][];
+      return social.length > 0
+        ? `Social Media Presence:\n${social.map(([platform, url]) => `  - ${platform}: ${url}`).join("\n")}`
+        : null;
+    })(),
   ].filter(Boolean).join("\n\n");
 
   return `Analyze this local business website and extract brand intelligence:\n\n${parts}\n\nRespond ONLY with a JSON object:\n{\n  "businessDescription": string (1-2 sentences describing what this business does),\n  "tagline": string | null (their actual tagline if found),\n  "logoUrl": string | null (best logo/brand image URL found — use ogImage if it looks like a logo),\n  "primaryColor": string | null (dominant brand color as hex),\n  "secondaryColor": string | null,\n  "accentColor": string | null (CTA/button color if found),\n  "toneWords": string[] (3-5 words describing their voice: e.g. "friendly", "expert", "local", "trustworthy"),\n  "keyPhrases": string[] (3-6 actual phrases or claims from their site),\n  "targetAudience": string (who they serve),\n  "uniqueValueProp": string (what makes them different in one sentence),\n  "industry": string (specific industry/trade),\n  "fontSuggestions": { "headline": string | null, "body": string | null } | null\n}`;
