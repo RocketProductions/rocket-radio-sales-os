@@ -19,10 +19,20 @@ export async function extractText(
   // ── PDF ──────────────────────────────────────────────────────────────────
   if (mimeType === "application/pdf" || name.endsWith(".pdf")) {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const pdfParse = require("pdf-parse") as (buf: Buffer) => Promise<{ text: string }>;
-      const data = await pdfParse(buffer);
-      const text = data.text?.replace(/\s+/g, " ").trim();
+      // Use pdfjs-dist directly — pdf-parse v2 wrapper is broken in Node.js serverless
+      const { getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs");
+      const data = new Uint8Array(buffer);
+      const doc = await getDocument({ data }).promise;
+
+      let text = "";
+      for (let i = 1; i <= doc.numPages; i++) {
+        const page = await doc.getPage(i);
+        const content = await page.getTextContent();
+        const items = content.items as Array<{ str: string }>;
+        text += items.map((item) => item.str).join(" ") + " ";
+      }
+
+      text = text.replace(/\s+/g, " ").trim();
       return {
         text: text ? text.slice(0, MAX_CHARS) : null,
         status: text ? "extracted" : "failed",
