@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { Rocket } from "lucide-react";
 import { resolveBranding, brandingToCss, getTenantIdFromCookie } from "@/lib/branding";
 import { PortalSignOutButton } from "@/components/portal/PortalSignOutButton";
+import { PortalThemeWrapper } from "@/components/portal/PortalThemeWrapper";
 
 /**
  * Client Portal Layout
@@ -25,6 +26,7 @@ export default async function PortalLayout({ children }: { children: React.React
         <style dangerouslySetInnerHTML={{ __html: brandingToCss(branding) }} />
       )}
 
+      <PortalThemeWrapper>
       <div className="min-h-screen bg-rocket-bg">
         {/* Header */}
         <header className="sticky top-0 z-10 border-b border-rocket-border bg-white/80 backdrop-blur-md">
@@ -51,6 +53,7 @@ export default async function PortalLayout({ children }: { children: React.React
           {children}
         </main>
       </div>
+      </PortalThemeWrapper>
     </>
   );
 }

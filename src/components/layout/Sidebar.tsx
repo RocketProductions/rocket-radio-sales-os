@@ -18,6 +18,7 @@ import {
   X,
   PanelLeftClose,
   PanelLeftOpen,
+  Palette,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -29,6 +30,7 @@ const NAV_ITEMS = [
   { href: "/dashboard/proposals",              label: "Proposals",      icon: FileText },
   { href: "/dashboard/assets",                 label: "Assets",         icon: FileImage },
   { href: "/dashboard/settings/connections",   label: "Settings",       icon: Settings },
+  { href: "/dashboard/settings/appearance",   label: "Appearance",     icon: Palette },
 ];
 
 const ADMIN_ITEMS = [
@@ -67,7 +69,7 @@ export function Sidebar({
   return (
     <aside
       className={cn(
-        "flex h-screen flex-col border-r border-rocket-border bg-white",
+        "flex h-screen flex-col border-r border-rocket-border bg-rocket-card",
         "fixed inset-y-0 left-0 z-30 transition-all duration-200 ease-in-out",
         "md:sticky md:top-0 md:z-auto md:translate-x-0",
         mobileOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full",
