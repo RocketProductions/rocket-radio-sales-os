@@ -158,7 +158,15 @@ export async function POST(req: Request) {
       }).catch((err) => console.error("[get-started] Prospect email error:", err));
     }
 
-    // ── 4. Auto-reply SMS to prospect ──────────────────────────────
+    // ── 5. AI Triage — score the prospect ─────────────────────────
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://rocketradiosales.com";
+    fetch(`${baseUrl}/api/agents/triage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ leadId }),
+    }).catch((err) => console.error("[get-started] Triage error:", err));
+
+    // ── 6. Auto-reply SMS to prospect ──────────────────────────────
     if (body.phone) {
       sendSmsViaTwilio({
         to: body.phone,
