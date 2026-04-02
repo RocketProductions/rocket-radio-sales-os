@@ -22,7 +22,7 @@ import { createCheckoutSession } from "@/integrations/stripe";
 const OnboardingSchema = z.object({
   businessName: z.string().min(2),
   industry: z.string().optional(),
-  website: z.string().url().optional().or(z.literal("")),
+  website: z.string().optional().or(z.literal("")),
   email: z.string().email(),
   password: z.string().min(8, "Password must be at least 8 characters"),
   tier: z.enum(["starter", "growth", "scale"]),

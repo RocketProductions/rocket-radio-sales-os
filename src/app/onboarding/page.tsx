@@ -216,8 +216,8 @@ export default function OnboardingPage() {
                 <div>
                   <label className="mb-1.5 block text-sm font-medium">Website</label>
                   <Input
-                    type="url"
-                    placeholder="https://yourwebsite.com"
+                    type="text"
+                    placeholder="yourwebsite.com"
                     value={website}
                     onChange={(e) => setWebsite(e.target.value)}
                   />

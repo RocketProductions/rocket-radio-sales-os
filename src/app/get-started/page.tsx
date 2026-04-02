@@ -155,10 +155,10 @@ export default function GetStartedPage() {
                   Website
                 </label>
                 <Input
-                  type="url"
+                  type="text"
                   value={website}
                   onChange={(e) => setWebsite(e.target.value)}
-                  placeholder="https://yourwebsite.com"
+                  placeholder="yourwebsite.com"
                 />
               </div>
 
