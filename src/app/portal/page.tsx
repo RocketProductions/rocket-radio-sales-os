@@ -79,8 +79,8 @@ export default async function PortalPage() {
   const statCards = [
     { label: "Total Leads",  value: stats.total,     description: "All time",      icon: UserCheck,     color: "bg-rocket-blue" },
     { label: "Contacted",    value: stats.contacted,  description: "We reached out", icon: Phone,         color: "bg-indigo-500" },
-    { label: "Booked",       value: stats.booked,     description: "Appointments",   icon: CalendarCheck, color: "bg-rocket-success" },
-    { label: "Closed",       value: stats.closed,     description: "New customers",  icon: TrendingUp,    color: "bg-rocket-accent" },
+    { label: "Booked",       value: stats.booked,     description: "Appointments",   icon: CalendarCheck, color: "bg-rocket-success-bright" },
+    { label: "Closed",       value: stats.closed,     description: "New customers",  icon: TrendingUp,    color: "bg-rocket-accent-bright" },
   ];
 
   return (

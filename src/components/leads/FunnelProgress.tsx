@@ -41,7 +41,7 @@ export function FunnelProgress({ status }: FunnelProgressProps) {
                   className={cn(
                     "flex h-8 w-8 items-center justify-center rounded-full border-2 transition-colors",
                     isDone    && "border-rocket-blue bg-rocket-blue text-white",
-                    isCurrent && "border-rocket-accent bg-rocket-accent text-white shadow-md shadow-rocket-accent/30",
+                    isCurrent && "border-rocket-accent-bright bg-rocket-accent-bright text-white shadow-md shadow-rocket-accent-bright/30",
                     isFuture  && "border-slate-200 bg-white text-slate-400",
                     isLost    && i <= 1 && "border-red-400 bg-red-400 text-white",
                   )}

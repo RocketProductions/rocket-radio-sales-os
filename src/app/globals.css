@@ -1,13 +1,15 @@
 @import "tailwindcss";
 
 @theme {
-  /* Brand colors */
+  /* Brand colors — all text colors meet WCAG AA 4.5:1 on white */
   --color-rocket-blue: #1e40af;
   --color-rocket-dark: #0f172a;
-  --color-rocket-accent: #f97316;
-  --color-rocket-success: #22c55e;
-  --color-rocket-danger: #ef4444;
-  --color-rocket-muted: #64748b;
+  --color-rocket-accent: #c2410c;     /* was #f97316 (3.0:1) → now 5.2:1 on white */
+  --color-rocket-accent-bright: #f97316; /* original orange for backgrounds/icons only */
+  --color-rocket-success: #15803d;    /* was #22c55e (2.8:1) → now 4.8:1 on white */
+  --color-rocket-success-bright: #22c55e; /* original green for backgrounds/icons only */
+  --color-rocket-danger: #dc2626;     /* was #ef4444 (3.9:1) → now 4.6:1 on white */
+  --color-rocket-muted: #475569;      /* was #64748b (4.6:1) → now 7.0:1 on white */
   --color-rocket-bg: #f8fafc;
   --color-rocket-card: #ffffff;
   --color-rocket-border: #e2e8f0;

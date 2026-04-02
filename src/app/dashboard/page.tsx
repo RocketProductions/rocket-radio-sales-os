@@ -98,8 +98,8 @@ export default async function DashboardPage() {
   const statCards = [
     { label: "Active Campaigns", value: stats.activeCampaigns, sub: `${campaigns.length} total`,                                        icon: Megaphone,     color: "bg-rocket-blue" },
     { label: "Leads This Month", value: stats.totalLeads,      sub: `${leads.length} all time`,                                          icon: UserCheck,     color: "bg-indigo-500" },
-    { label: "Clients",          value: stats.clients,         sub: "With leads",                                                        icon: Users,         color: "bg-rocket-success" },
-    { label: "Booked / Closed",  value: stats.booked,          sub: leads.length > 0 ? `${Math.round((stats.booked / leads.length) * 100)}% close rate` : "No leads yet", icon: CalendarCheck, color: "bg-rocket-accent" },
+    { label: "Clients",          value: stats.clients,         sub: "With leads",                                                        icon: Users,         color: "bg-rocket-success-bright" },
+    { label: "Booked / Closed",  value: stats.booked,          sub: leads.length > 0 ? `${Math.round((stats.booked / leads.length) * 100)}% close rate` : "No leads yet", icon: CalendarCheck, color: "bg-rocket-accent-bright" },
   ];
 
   // Funnel data

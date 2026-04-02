@@ -139,7 +139,7 @@ function BusinessCard({
             <CardTitle className="text-base font-semibold truncate">{businessName}</CardTitle>
             {liveSession ? (
               <span className="flex items-center gap-1.5 text-xs text-rocket-success font-medium shrink-0">
-                <span className="h-2 w-2 rounded-full bg-rocket-success inline-block" />
+                <span className="h-2 w-2 rounded-full bg-rocket-success-bright inline-block" />
                 Live
                 {liveSession.lp_slug && (
                   <a

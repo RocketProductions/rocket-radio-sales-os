@@ -173,8 +173,8 @@ export default async function ReportsPage() {
           <CardHeader><CardTitle className="text-base">Lead Funnel</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <FunnelBar label="New Leads"  count={total}     total={total} color="bg-rocket-blue"    sublabel="captured" />
-            <FunnelBar label="Contacted"  count={contacted} total={total} color="bg-rocket-accent"  sublabel="texted or emailed" />
-            <FunnelBar label="Booked"     count={booked}    total={total} color="bg-rocket-success" sublabel="appointment set" />
+            <FunnelBar label="Contacted"  count={contacted} total={total} color="bg-rocket-accent-bright"  sublabel="texted or emailed" />
+            <FunnelBar label="Booked"     count={booked}    total={total} color="bg-rocket-success-bright" sublabel="appointment set" />
             <FunnelBar label="Closed"     count={closed}    total={total} color="bg-green-700"      sublabel="new customers" />
             {lost > 0 && (
               <FunnelBar label="Lost" count={lost} total={total} color="bg-rocket-muted" sublabel="not converted" />

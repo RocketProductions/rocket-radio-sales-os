@@ -152,9 +152,9 @@ export default function OnboardingPage() {
                     <div
                       className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${
                         isComplete
-                          ? "bg-rocket-success text-white"
+                          ? "bg-rocket-success-bright text-white"
                           : isActive
-                            ? "bg-rocket-accent text-white"
+                            ? "bg-rocket-accent-bright text-white"
                             : "bg-rocket-border text-rocket-muted"
                       }`}
                     >
