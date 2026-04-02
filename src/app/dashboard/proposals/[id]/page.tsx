@@ -3,8 +3,7 @@ import Link from "next/link";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Radio, FileText, MessageSquare, Globe, Building2 } from "lucide-react";
+import { ArrowLeft, Check } from "lucide-react";
 import { ProposalPrintButton } from "@/components/proposals/ProposalPrintButton";
 
 export const dynamic = "force-dynamic";
@@ -27,13 +26,48 @@ type ProposalDetail = {
   notes: string | null;
   created_at: string;
   session_id: string | null;
-  campaign_sessions: { business_name: string } | null;
+  campaign_sessions: { business_name: string; intake_form: Record<string, string> | null; brand_kit_id: string | null } | null;
 };
 
-const TIER_LABELS: Record<string, string> = {
-  starter: "Starter — $497/mo",
-  growth:  "Growth — $1,497/mo",
-  scale:   "Scale — $2,997/mo",
+const TIER_DATA: Record<string, { label: string; price: string; monthly: number; features: string[] }> = {
+  starter: {
+    label: "Starter",
+    price: "$497/mo",
+    monthly: 497,
+    features: [
+      "1 radio campaign — we write the script",
+      "Every lead gets an instant text back",
+      "See every lead in your dashboard",
+      "Know who called, who booked, who bought",
+      "Weekly email showing your results",
+    ],
+  },
+  growth: {
+    label: "Growth",
+    price: "$1,497/mo",
+    monthly: 1497,
+    features: [
+      "Everything in Starter, plus:",
+      "We build your landing page",
+      "We set up and manage your Meta ads",
+      "5 automatic follow-ups per lead over 14 days",
+      "Monthly performance call with your strategist",
+      "ROI reporting — see exactly what your campaign earned",
+    ],
+  },
+  scale: {
+    label: "Scale",
+    price: "$2,997/mo",
+    monthly: 2997,
+    features: [
+      "Everything in Growth, plus:",
+      "Run 2+ campaigns at the same time",
+      "We A/B test ads and landing pages",
+      "Advanced reporting with source attribution",
+      "Dedicated monthly strategy session",
+      "Priority support — same-day response",
+    ],
+  },
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -53,7 +87,7 @@ export default async function ProposalDetailPage({ params }: Props) {
       big_idea, offer_text, radio_script,
       funnel_headline, funnel_body, follow_up_summary,
       notes, created_at, session_id,
-      campaign_sessions ( business_name )
+      campaign_sessions ( business_name, intake_form, brand_kit_id )
     `)
     .eq("id", id)
     .single();
@@ -62,11 +96,56 @@ export default async function ProposalDetailPage({ params }: Props) {
 
   const proposal = raw as unknown as ProposalDetail;
   const tier = proposal.tier ?? "starter";
+  const tierData = TIER_DATA[tier] ?? TIER_DATA.starter;
+  const businessName = proposal.campaign_sessions?.business_name ?? "Your Business";
+  const intake = proposal.campaign_sessions?.intake_form ?? {};
+  const avgTicket = parseFloat(intake.avgTicket ?? "0") || 0;
+  const industry = intake.industry ?? "";
+  const audience = intake.targetAudience ?? "";
+
+  // Fetch brand kit for logo + colors
+  let logoUrl: string | null = null;
+  let primaryColor = "#1e40af";
+  let accentColor = "#c2410c";
+  const brandKitId = proposal.campaign_sessions?.brand_kit_id;
+  if (brandKitId) {
+    const { data: bk } = await supabase
+      .from("brand_kits")
+      .select("logo_url, primary_color, accent_color")
+      .eq("id", brandKitId)
+      .single();
+    if (bk) {
+      const k = bk as { logo_url: string | null; primary_color: string | null; accent_color: string | null };
+      logoUrl = k.logo_url;
+      if (k.primary_color) primaryColor = k.primary_color;
+      if (k.accent_color) accentColor = k.accent_color;
+    }
+  }
+
+  // ROI projection
+  const projectedLeads = 80; // conservative monthly estimate
+  const closeRate = 0.20;
+  const projectedCustomers = Math.round(projectedLeads * closeRate);
+  const projectedRevenue = projectedCustomers * avgTicket;
+  const roi = tierData.monthly > 0 ? (projectedRevenue / tierData.monthly) : 0;
+  const hasRoi = avgTicket > 0;
+
+  const dateStr = new Date(proposal.created_at).toLocaleDateString("en-US", {
+    month: "long", day: "numeric", year: "numeric",
+  });
+
+  const sequence = [
+    { time: "Instant", channel: "Text", desc: "Instant confirmation — we respond before they forget" },
+    { time: "Day 1",   channel: "Email", desc: "Personalized follow-up with next steps" },
+    { time: "Day 3",   channel: "Text",  desc: "Friendly check-in — keeps you top of mind" },
+    { time: "Day 7",   channel: "Email", desc: "Value reminder — why they reached out" },
+    { time: "Day 14",  channel: "Text",  desc: "Last touch — soft close or invite to reconnect" },
+  ];
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between print:hidden">
+    <>
+      {/* Nav — screen only */}
+      <div className="mx-auto max-w-3xl flex items-center justify-between mb-6 print:hidden">
         <div className="flex items-center gap-3">
           <Link href="/dashboard/proposals">
             <Button variant="ghost" size="sm">
@@ -74,204 +153,253 @@ export default async function ProposalDetailPage({ params }: Props) {
               Proposals
             </Button>
           </Link>
-          <div>
-            <h1 className="text-xl font-bold">{proposal.title}</h1>
-            <p className="text-sm text-rocket-muted">
-              {proposal.campaign_sessions?.business_name ?? "No campaign linked"}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge
-            variant="outline"
-            className={`text-xs ${STATUS_COLORS[proposal.status] ?? ""}`}
-          >
+          <Badge variant="outline" className={`text-xs ${STATUS_COLORS[proposal.status] ?? ""}`}>
             {proposal.status}
           </Badge>
-          <Badge variant="secondary" className="text-xs">
-            {TIER_LABELS[tier] ?? tier}
-          </Badge>
+        </div>
+        <div className="flex gap-2">
+          <ProposalPrintButton />
+          {proposal.notes && (
+            <Badge variant="secondary" className="text-xs">Has internal notes</Badge>
+          )}
         </div>
       </div>
 
-      {/* Print-only title */}
-      <div className="hidden print:block mb-6">
-        <h1 className="text-2xl font-bold">{proposal.title}</h1>
-        {proposal.campaign_sessions?.business_name && (
-          <p className="text-base text-rocket-muted">{proposal.campaign_sessions.business_name}</p>
-        )}
-        <p className="text-sm text-rocket-muted mt-1">
-          Prepared {new Date(proposal.created_at).toLocaleDateString([], { month: "long", day: "numeric", year: "numeric" })}
-        </p>
-      </div>
+      {/* ═══════════════════════════════════════════════════════════════════
+          SALES DECK — designed for print and screen
+          ═══════════════════════════════════════════════════════════════════ */}
+      <div className="mx-auto max-w-3xl space-y-0">
 
-      {/* ─── Big Idea ─────────────────────────────────────────────────── */}
-      {proposal.big_idea && (
-        <Card className="border-rocket-accent bg-rocket-accent/5">
-          <CardContent className="pt-6">
-            <p className="text-xs font-medium uppercase tracking-wide text-rocket-accent">
+        {/* ── COVER ──────────────────────────────────────────────────── */}
+        <section
+          className="relative rounded-t-2xl px-10 py-16 text-white overflow-hidden print:rounded-none print:px-8"
+          style={{ backgroundColor: primaryColor }}
+        >
+          <div className="relative z-10">
+            {logoUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={logoUrl} alt="" className="h-10 w-auto mb-8 brightness-0 invert opacity-80" />
+            )}
+            <p className="text-sm font-medium uppercase tracking-widest opacity-70">Campaign Proposal</p>
+            <h1 className="mt-3 text-3xl font-bold leading-tight md:text-4xl">
+              {proposal.title}
+            </h1>
+            <p className="mt-3 text-lg opacity-80">
+              Prepared for {businessName}
+            </p>
+            <div className="mt-6 flex flex-wrap gap-4 text-sm opacity-60">
+              <span>{dateStr}</span>
+              {industry && <span>&middot; {industry}</span>}
+              <span>&middot; Powered by Federated Media</span>
+            </div>
+          </div>
+          {/* Decorative circles */}
+          <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/5" />
+          <div className="absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-white/5" />
+        </section>
+
+        {/* ── THE BIG IDEA ───────────────────────────────────────────── */}
+        {proposal.big_idea && (
+          <section className="border-x border-rocket-border bg-white px-10 py-10 print:px-8">
+            <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: accentColor }}>
               The Big Idea
             </p>
-            <p className="mt-2 text-lg font-semibold text-rocket-dark">
+            <p className="mt-3 text-2xl font-bold leading-snug text-rocket-dark">
               {proposal.big_idea}
             </p>
-          </CardContent>
-        </Card>
-      )}
+          </section>
+        )}
 
-      {/* ─── Offer ────────────────────────────────────────────────────── */}
-      {proposal.offer_text && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <FileText className="h-4 w-4 text-rocket-muted" />
-              The Offer
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm leading-relaxed text-rocket-dark">
-              {proposal.offer_text}
-            </p>
-          </CardContent>
-        </Card>
-      )}
+        {/* ── THE OPPORTUNITY ────────────────────────────────────────── */}
+        {(proposal.offer_text || audience) && (
+          <section className="border-x border-t border-rocket-border bg-slate-50 px-10 py-10 print:px-8">
+            <p className="text-xs font-semibold uppercase tracking-widest text-rocket-muted">The Opportunity</p>
+            <div className="mt-4 grid gap-6 sm:grid-cols-2">
+              {proposal.offer_text && (
+                <div>
+                  <p className="text-sm font-semibold text-rocket-dark">The Offer</p>
+                  <p className="mt-1 text-sm leading-relaxed text-rocket-muted">{proposal.offer_text}</p>
+                </div>
+              )}
+              {audience && (
+                <div>
+                  <p className="text-sm font-semibold text-rocket-dark">Who We&apos;re Reaching</p>
+                  <p className="mt-1 text-sm leading-relaxed text-rocket-muted">{audience}</p>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
 
-      {/* ─── Radio Script ──────────────────────────────────────────────── */}
-      {proposal.radio_script && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Radio className="h-4 w-4 text-rocket-muted" />
-              Radio Script (30 seconds)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <pre className="whitespace-pre-wrap rounded-md bg-rocket-bg p-4 font-mono text-sm leading-relaxed text-rocket-dark">
-              {proposal.radio_script}
-            </pre>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* ─── Landing Page ──────────────────────────────────────────────── */}
-      {(proposal.funnel_headline || proposal.funnel_body) && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Globe className="h-4 w-4 text-rocket-muted" />
-              Landing Page
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {proposal.funnel_headline && (
-              <div>
-                <p className="text-xs font-medium text-rocket-muted">Headline</p>
-                <p className="mt-1 text-lg font-bold text-rocket-dark">
-                  {proposal.funnel_headline}
-                </p>
+        {/* ── ROI PROJECTION ─────────────────────────────────────────── */}
+        {hasRoi && (
+          <section className="border-x border-t border-rocket-border bg-white px-10 py-10 print:px-8">
+            <p className="text-xs font-semibold uppercase tracking-widest text-rocket-muted">Projected Return</p>
+            <div className="mt-6 grid grid-cols-4 gap-4 text-center">
+              <div className="rounded-xl bg-slate-50 p-4">
+                <p className="text-3xl font-bold text-rocket-dark">{projectedLeads}</p>
+                <p className="mt-1 text-xs text-rocket-muted">Projected leads/mo</p>
               </div>
-            )}
-            {proposal.funnel_body && (
-              <div>
-                <p className="text-xs font-medium text-rocket-muted">Body Copy</p>
-                <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-rocket-dark">
+              <div className="rounded-xl bg-slate-50 p-4">
+                <p className="text-3xl font-bold text-rocket-dark">{projectedCustomers}</p>
+                <p className="mt-1 text-xs text-rocket-muted">New customers</p>
+              </div>
+              <div className="rounded-xl bg-slate-50 p-4">
+                <p className="text-3xl font-bold text-rocket-dark">${projectedRevenue.toLocaleString()}</p>
+                <p className="mt-1 text-xs text-rocket-muted">Est. revenue</p>
+              </div>
+              <div className="rounded-xl p-4" style={{ backgroundColor: `${accentColor}10` }}>
+                <p className="text-3xl font-bold" style={{ color: accentColor }}>{roi.toFixed(1)}x</p>
+                <p className="mt-1 text-xs text-rocket-muted">Return on {tierData.price}</p>
+              </div>
+            </div>
+            <p className="mt-4 text-xs text-rocket-muted text-center">
+              Based on {projectedLeads} leads/mo, {Math.round(closeRate * 100)}% close rate, ${avgTicket.toLocaleString()} avg customer value.
+              Conservative estimate — actual results vary.
+            </p>
+          </section>
+        )}
+
+        {/* ── THE CAMPAIGN ───────────────────────────────────────────── */}
+        <section className="border-x border-t border-rocket-border bg-white px-10 py-10 print:px-8">
+          <p className="text-xs font-semibold uppercase tracking-widest text-rocket-muted">How It Works</p>
+          <div className="mt-6 grid gap-0">
+            {[
+              { num: "1", title: "Radio Drives Awareness", desc: "Your 30-second spot runs on 95.3 MNC. Listeners hear your offer and remember your name." },
+              { num: "2", title: "Landing Page Captures Interest", desc: "When they search or visit your page, a conversion-optimized landing page captures their info." },
+              { num: "3", title: "Instant Follow-Up Converts", desc: "Within seconds, they get a text confirming their request. Then a 5-touch sequence keeps you top of mind." },
+              { num: "4", title: "You See Every Lead", desc: "Your dashboard shows every lead, every follow-up, and every outcome. You always know what's working." },
+            ].map((step, i) => (
+              <div key={i} className="flex gap-4 py-4 border-b border-rocket-border last:border-0">
+                <div
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
+                  style={{ backgroundColor: primaryColor }}
+                >
+                  {step.num}
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-rocket-dark">{step.title}</p>
+                  <p className="mt-0.5 text-sm text-rocket-muted">{step.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ── RADIO SCRIPT PREVIEW ───────────────────────────────────── */}
+        {proposal.radio_script && (
+          <section className="border-x border-t border-rocket-border bg-slate-50 px-10 py-10 print:px-8">
+            <p className="text-xs font-semibold uppercase tracking-widest text-rocket-muted">Your Radio Script</p>
+            <p className="mt-1 text-xs text-rocket-muted">30-second spot for 95.3 MNC</p>
+            <div className="mt-4 rounded-xl border border-rocket-border bg-white p-6 shadow-sm">
+              <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-rocket-dark">
+                {proposal.radio_script}
+              </pre>
+            </div>
+          </section>
+        )}
+
+        {/* ── LANDING PAGE PREVIEW ───────────────────────────────────── */}
+        {(proposal.funnel_headline || proposal.funnel_body) && (
+          <section className="border-x border-t border-rocket-border bg-white px-10 py-10 print:px-8">
+            <p className="text-xs font-semibold uppercase tracking-widest text-rocket-muted">Your Landing Page</p>
+            <div className="mt-4 rounded-xl border border-rocket-border bg-slate-50 p-6 space-y-3">
+              {proposal.funnel_headline && (
+                <p className="text-xl font-bold text-rocket-dark">{proposal.funnel_headline}</p>
+              )}
+              {proposal.funnel_body && (
+                <p className="text-sm leading-relaxed text-rocket-muted whitespace-pre-line">
                   {proposal.funnel_body}
                 </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+              )}
+            </div>
+          </section>
+        )}
 
-      {/* ─── Follow-Up Plan ────────────────────────────────────────────── */}
-      {proposal.follow_up_summary && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <MessageSquare className="h-4 w-4 text-rocket-muted" />
-              How We Follow Up Every Lead
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm leading-relaxed text-rocket-dark">
-              {proposal.follow_up_summary}
-            </p>
-            <div className="mt-4 rounded-md border border-rocket-border bg-rocket-bg p-3">
-              <p className="text-xs font-medium text-rocket-muted">Sequence</p>
-              <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                {["Instant text", "Day 1 email", "Day 3 text", "Day 7 email", "Day 14 text"].map(
-                  (step) => (
-                    <span
-                      key={step}
-                      className="rounded-full border border-rocket-border bg-white px-2 py-0.5 text-rocket-dark"
-                    >
-                      {step}
-                    </span>
-                  ),
+        {/* ── FOLLOW-UP SEQUENCE ──────────────────────────────────────── */}
+        <section className="border-x border-t border-rocket-border bg-white px-10 py-10 print:px-8">
+          <p className="text-xs font-semibold uppercase tracking-widest text-rocket-muted">Every Lead Gets 5 Follow-Ups</p>
+          <p className="mt-1 text-sm text-rocket-muted">Automatic. No action required from you.</p>
+          <div className="mt-6 space-y-0">
+            {sequence.map((s, i) => (
+              <div key={i} className="flex items-start gap-4 py-3 border-b border-rocket-border/50 last:border-0">
+                <div className="flex flex-col items-center shrink-0 w-14">
+                  <span className="text-xs font-bold text-rocket-dark">{s.time}</span>
+                  <span className="text-[10px] text-rocket-muted">{s.channel}</span>
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm text-rocket-dark">{s.desc}</p>
+                </div>
+                {i === 0 && (
+                  <Badge variant="success" className="shrink-0 text-[10px]">Fastest in market</Badge>
                 )}
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* ─── Pricing ──────────────────────────────────────────────────── */}
-      <Card className="border-2 border-rocket-dark">
-        <CardContent className="pt-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-rocket-muted">
-                Investment
-              </p>
-              <p className="mt-1 text-2xl font-bold text-rocket-dark">
-                {TIER_LABELS[tier] ?? tier}
-              </p>
-              <p className="mt-1 text-sm text-rocket-muted">
-                Month-to-month. No long-term contract required.
-              </p>
-            </div>
-            <Badge variant="outline" className="text-sm font-semibold">
-              {tier.charAt(0).toUpperCase() + tier.slice(1)} Tier
-            </Badge>
+            ))}
           </div>
-        </CardContent>
-      </Card>
+          {proposal.follow_up_summary && (
+            <p className="mt-4 text-xs text-rocket-muted italic">{proposal.follow_up_summary}</p>
+          )}
+        </section>
 
-      {/* ─── Campaign Link ─────────────────────────────────────────────── */}
-      {proposal.session_id && (
-        <div className="flex items-center gap-2 rounded-md border border-rocket-border bg-rocket-bg px-3 py-2 text-sm text-rocket-muted">
-          <Building2 className="h-4 w-4 shrink-0" />
-          <span>Linked to campaign:</span>
-          <Link
-            href={`/dashboard/campaigns/new?session=${proposal.session_id}`}
-            className="font-medium text-rocket-blue hover:underline"
-          >
-            {proposal.campaign_sessions?.business_name ?? proposal.session_id}
-          </Link>
+        {/* ── INVESTMENT ──────────────────────────────────────────────── */}
+        <section
+          className="border-x border-t px-10 py-10 print:px-8"
+          style={{ backgroundColor: primaryColor }}
+        >
+          <div className="text-white">
+            <p className="text-xs font-semibold uppercase tracking-widest opacity-60">Your Investment</p>
+            <div className="mt-4 flex items-end justify-between gap-4">
+              <div>
+                <p className="text-4xl font-bold">{tierData.price}</p>
+                <p className="mt-1 text-sm opacity-70">
+                  {tierData.label} plan &middot; Month-to-month &middot; Cancel anytime
+                </p>
+              </div>
+              {hasRoi && (
+                <div className="text-right">
+                  <p className="text-2xl font-bold">{roi.toFixed(1)}x ROI</p>
+                  <p className="text-sm opacity-70">projected return</p>
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="mt-6 grid gap-2 sm:grid-cols-2">
+            {tierData.features.map((f, i) => (
+              <div key={i} className="flex items-start gap-2 text-white/90">
+                <Check className="h-4 w-4 shrink-0 mt-0.5 text-white/60" />
+                <span className="text-sm">{f}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ── FOOTER ─────────────────────────────────────────────────── */}
+        <section className="rounded-b-2xl border-x border-t border-b border-rocket-border bg-white px-10 py-8 text-center print:rounded-none print:px-8">
+          <p className="text-sm font-semibold text-rocket-dark">Ready to get started?</p>
+          <p className="mt-1 text-sm text-rocket-muted">
+            Contact your Federated Media representative or visit rocketradiosales.com
+          </p>
+          <p className="mt-4 text-xs text-rocket-muted">
+            &copy; {new Date().getFullYear()} Federated Media &middot; Fort Wayne, Indiana
+          </p>
+        </section>
+      </div>
+
+      {/* ── Internal Notes — screen only ────────────────────────────── */}
+      {proposal.notes && (
+        <div className="mx-auto max-w-3xl mt-6 rounded-xl border border-dashed border-rocket-border bg-rocket-bg p-4 print:hidden">
+          <p className="text-xs font-medium text-rocket-muted">Internal Notes (not shown to client)</p>
+          <p className="mt-1 text-sm text-rocket-muted">{proposal.notes}</p>
         </div>
       )}
 
-      {/* ─── Internal Notes ───────────────────────────────────────────── */}
-      {proposal.notes && (
-        <Card className="border-dashed print:hidden">
-          <CardContent className="pt-4">
-            <p className="text-xs font-medium text-rocket-muted">
-              Internal Notes (not shown to client)
-            </p>
-            <p className="mt-1 text-sm text-rocket-muted">{proposal.notes}</p>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* ─── Actions ──────────────────────────────────────────────────── */}
-      <div className="flex gap-3 pb-8 print:hidden">
+      {/* ── Actions — screen only ───────────────────────────────────── */}
+      <div className="mx-auto max-w-3xl flex gap-3 mt-6 pb-8 print:hidden">
         <ProposalPrintButton />
         <Link href="/dashboard/proposals" className="flex-1">
-          <Button variant="ghost" className="w-full">
-            Back to proposals
-          </Button>
+          <Button variant="ghost" className="w-full">Back to proposals</Button>
         </Link>
       </div>
-    </div>
+    </>
   );
 }
