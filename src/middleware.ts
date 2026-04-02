@@ -32,6 +32,8 @@ const PUBLIC_ROUTES = [
   "/api/social/callback", // OAuth callbacks come from external platforms (no cookie)
   "/privacy",            // Privacy policy — public
   "/terms",              // Terms & conditions — public
+  "/get-started",        // Rocket Radio's own lead capture — public
+  "/api/get-started",    // Get-started form submission — public
 ];
 
 // Routes that require rep/admin/super_admin role

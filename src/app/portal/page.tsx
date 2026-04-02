@@ -7,6 +7,7 @@ import { LeadStatusUpdater } from "@/components/leads/LeadStatusUpdater";
 import { PageHeader } from "@/components/ui/page-header";
 import {
   UserCheck, Phone, CalendarCheck, TrendingUp, ChevronRight, Inbox, Activity,
+  Rocket, Radio, Globe, Zap, ExternalLink,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -87,6 +88,41 @@ export default async function PortalPage() {
   const estimatedRevenue = (stats.booked + stats.closed) * avgTicket;
   const hasRoi = avgTicket > 0 && (stats.booked + stats.closed) > 0;
 
+  // Fetch campaign context for welcome state (when no leads yet)
+  let campaignContext: { businessName: string; lpUrl: string | null; scriptPreview: string | null } | null = null;
+  if (stats.total === 0 && tenantId) {
+    const { data: sessions } = await supabase
+      .from("campaign_sessions")
+      .select("session_id, business_name, lp_slug, lp_live")
+      .eq("tenant_id", tenantId)
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    if (sessions && sessions.length > 0) {
+      const s = sessions[0] as { session_id: string; business_name: string; lp_slug: string | null; lp_live: boolean };
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://rocketradiosales.com";
+
+      // Fetch radio script if available
+      let script: string | null = null;
+      const { data: assets } = await supabase
+        .from("campaign_assets")
+        .select("content")
+        .eq("session_id", s.session_id)
+        .eq("asset_type", "radio-script")
+        .limit(1);
+      if (assets && assets.length > 0) {
+        const content = (assets[0] as { content: { script?: string } }).content;
+        script = content?.script?.slice(0, 200) ?? null;
+      }
+
+      campaignContext = {
+        businessName: s.business_name,
+        lpUrl: s.lp_live && s.lp_slug ? `${baseUrl}/lp/${s.lp_slug}` : null,
+        scriptPreview: script,
+      };
+    }
+  }
+
   const activityItems = leads.slice(0, 15).map((l) => ({
     id:        l.id,
     message:   `New lead: ${l.name ?? "Unknown"} from ${l.landing_pages?.business_name ?? "landing page"}`,
@@ -103,6 +139,63 @@ export default async function PortalPage() {
   return (
     <div className="space-y-8">
       <PageHeader title="Your Leads" subtitle="Everything happening with your campaign leads." />
+
+      {/* Welcome state — shown when campaign exists but no leads yet */}
+      {stats.total === 0 && campaignContext && (
+        <Card className="relative overflow-hidden border-rocket-blue/20 bg-gradient-to-r from-rocket-blue/5 to-transparent animate-fade-in-up">
+          <div className="absolute inset-y-0 left-0 w-1.5 bg-rocket-blue" />
+          <CardContent className="py-6 pl-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rocket-blue/10">
+                <Rocket className="h-5 w-5 text-rocket-blue" />
+              </div>
+              <div>
+                <p className="text-lg font-semibold text-rocket-dark">Your campaign is live!</p>
+                <p className="text-sm text-rocket-muted">Everything is set up for {campaignContext.businessName}. Leads will appear here as they come in.</p>
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="flex items-start gap-3 rounded-xl border border-rocket-border bg-white p-3">
+                <Radio className="h-4 w-4 text-rocket-blue shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-xs font-semibold text-rocket-dark">Radio spot running</p>
+                  {campaignContext.scriptPreview ? (
+                    <p className="mt-0.5 text-[11px] text-rocket-muted line-clamp-2 italic">&ldquo;{campaignContext.scriptPreview}...&rdquo;</p>
+                  ) : (
+                    <p className="mt-0.5 text-[11px] text-rocket-muted">Your ad is on the air</p>
+                  )}
+                </div>
+              </div>
+
+              {campaignContext.lpUrl && (
+                <div className="flex items-start gap-3 rounded-xl border border-rocket-border bg-white p-3">
+                  <Globe className="h-4 w-4 text-rocket-blue shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs font-semibold text-rocket-dark">Landing page live</p>
+                    <a
+                      href={campaignContext.lpUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-0.5 flex items-center gap-1 text-[11px] text-rocket-blue hover:underline"
+                    >
+                      View page <ExternalLink className="h-2.5 w-2.5" />
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-start gap-3 rounded-xl border border-rocket-border bg-white p-3">
+                <Zap className="h-4 w-4 text-rocket-blue shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-xs font-semibold text-rocket-dark">Auto-response ready</p>
+                  <p className="mt-0.5 text-[11px] text-rocket-muted">Every lead gets a text in under 60 seconds</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stat Cards */}
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4 stagger-children">
