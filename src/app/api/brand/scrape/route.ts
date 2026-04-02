@@ -172,6 +172,7 @@ Always respond with valid JSON matching the exact schema. No markdown fences.`;
       kit:          resolvedKit,
       id:           (savedKit as { id?: string } | null)?.id ?? null,
       scrapedTitle: rawData.title,
+      scrapedPhone: rawData.phone,
       intake,
       colorSource,  // 'logo' | 'css' | 'none' — useful for UI to show how colors were detected
     });

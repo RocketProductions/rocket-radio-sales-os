@@ -16,6 +16,7 @@ export interface RawScrapeData {
   cssColors: string[];      // hex/rgb values found in <style> blocks AND external stylesheets
   cssVariables: Record<string, string>; // --primary, --color-*, etc.
   canonicalUrl: string | null;
+  phone: string | null;     // first US phone number found on the page
 }
 
 const FETCH_HEADERS = {
@@ -94,6 +95,7 @@ export async function scrapeWebsite(url: string): Promise<RawScrapeData> {
     cssColors: extractCssColors(allCssSource),
     cssVariables: extractCssVariables(allCssSource),
     canonicalUrl: extractCanonical(html),
+    phone: extractPhone(html),
   };
 }
 
@@ -195,6 +197,37 @@ function extractCssVariables(source: string): Record<string, string> {
     }
   }
   return vars;
+}
+
+/** Extract the first US phone number from tel: links or visible text */
+function extractPhone(html: string): string | null {
+  // 1. Try tel: links first — most reliable
+  const telMatch = html.match(/href=["']tel:([^"']+)["']/i);
+  if (telMatch) {
+    const digits = telMatch[1].replace(/\D/g, "");
+    if (digits.length === 10 || (digits.length === 11 && digits.startsWith("1"))) {
+      const d = digits.length === 11 ? digits.slice(1) : digits;
+      return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
+    }
+  }
+
+  // 2. Regex for common US phone formats in visible text
+  const bodyText = html
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<style[\s\S]*?<\/style>/gi, "");
+
+  const phoneRe = /(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]\d{3}[-.\s]\d{4}/g;
+  const matches = bodyText.match(phoneRe);
+  if (matches && matches.length > 0) {
+    // Return the first one, cleaned up
+    const digits = matches[0].replace(/\D/g, "");
+    const d = digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits;
+    if (d.length === 10) {
+      return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
+    }
+  }
+
+  return null;
 }
 
 function extractCanonical(html: string): string | null {

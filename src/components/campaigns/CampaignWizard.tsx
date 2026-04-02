@@ -224,6 +224,10 @@ export function CampaignWizard({ initialData }: { initialData?: InitialSessionDa
           setSlug(auto);
           suggested.push("businessName");
         }
+        if (json.scrapedPhone && !prev.phone) {
+          next.phone = json.scrapedPhone;
+          suggested.push("phone");
+        }
         if (intake?.industry && !prev.industry) {
           next.industry = intake.industry;
           suggested.push("industry");
@@ -571,7 +575,12 @@ export function CampaignWizard({ initialData }: { initialData?: InitialSessionDa
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium">Phone Number</label>
+              <label className="mb-1 flex items-center gap-2 text-sm font-medium">
+                Phone Number
+                {aiSuggestedFields.includes("phone") && (
+                  <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-600">✦ From website</span>
+                )}
+              </label>
               <Input
                 value={form.phone}
                 onChange={(e) => update("phone", e.target.value)}
