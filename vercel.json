@@ -15,6 +15,14 @@
     {
       "path": "/api/cron/client-success",
       "schedule": "0 13 * * *"
+    },
+    {
+      "path": "/api/cron/outreach-followup",
+      "schedule": "0 14 * * 1,4"
+    },
+    {
+      "path": "/api/cron/optimize-content",
+      "schedule": "0 14 * * 2"
     }
   ]
 }
