@@ -4,6 +4,7 @@ import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { sendLeadNotification } from "@/lib/smsProviders";
 import { triggerAutoResponse } from "@/lib/automation/engine";
 import { sendEmailViaResend } from "@/integrations/email";
+import { emailWrapper, emailRow, emailPhone, emailSuccess, emailButton } from "@/lib/emailTemplate";
 
 const Schema = z.object({
   landingPageId: z.string().uuid(),
@@ -117,30 +118,22 @@ async function sendLeadNotificationEmail(
     `We've already sent them an instant response. You can follow up in your dashboard.`,
   ].join("\n");
 
-  const htmlBody = `
-    <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto;">
-      <div style="background: #1e40af; padding: 20px 24px; border-radius: 12px 12px 0 0;">
-        <h2 style="color: white; margin: 0; font-size: 18px;">New Lead for ${data.businessName}</h2>
-      </div>
-      <div style="background: white; border: 1px solid #e2e8f0; border-top: none; padding: 24px; border-radius: 0 0 12px 12px;">
-        <table style="width: 100%; border-collapse: collapse;">
-          <tr>
-            <td style="padding: 8px 0; color: #64748b; font-size: 13px; width: 100px;">Name</td>
-            <td style="padding: 8px 0; font-weight: 600; font-size: 15px;">${data.leadName}</td>
-          </tr>
-          ${data.leadPhone ? `<tr><td style="padding: 8px 0; color: #64748b; font-size: 13px;">Phone</td><td style="padding: 8px 0; font-size: 15px;"><a href="tel:${data.leadPhone}" style="color: #1e40af; text-decoration: none;">${data.leadPhone}</a></td></tr>` : ""}
-          ${data.leadEmail ? `<tr><td style="padding: 8px 0; color: #64748b; font-size: 13px;">Email</td><td style="padding: 8px 0; font-size: 15px;">${data.leadEmail}</td></tr>` : ""}
-          ${referral ? `<tr><td style="padding: 8px 0; color: #64748b; font-size: 13px;">Source</td><td style="padding: 8px 0; font-size: 15px;">${referral}</td></tr>` : ""}
-        </table>
-        <div style="margin-top: 16px; padding: 12px; background: #f0fdf4; border-radius: 8px; font-size: 13px; color: #166534;">
-          &#x2713; We already sent them an instant response.
-        </div>
-        <p style="margin-top: 16px; font-size: 13px; color: #64748b;">
-          Check your <strong>Your Leads</strong> dashboard for full details and follow-up options.
-        </p>
-      </div>
-    </div>
-  `;
+  const portalUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://rocketradiosales.com";
+  const rows = [
+    emailRow("Name", data.leadName),
+    data.leadPhone ? emailPhone("Phone", data.leadPhone) : "",
+    data.leadEmail ? emailRow("Email", data.leadEmail) : "",
+    referral ? emailRow("Source", referral) : "",
+  ].filter(Boolean).join("");
+
+  const htmlBody = emailWrapper(
+    `New Lead for ${data.businessName}`,
+    `
+      <table style="width: 100%; border-collapse: collapse;">${rows}</table>
+      ${emailSuccess("We already sent them an instant response.")}
+      ${emailButton("View in Your Leads", `${portalUrl}/portal`)}
+    `
+  );
 
   for (const owner of owners as { email: string; name: string | null }[]) {
     if (!owner.email) continue;

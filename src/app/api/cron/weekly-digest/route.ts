@@ -14,6 +14,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { sendEmailViaResend } from "@/integrations/email";
+import { emailWrapper, emailStatCard, emailStatRow, emailSuccess, emailButton, emailRow } from "@/lib/emailTemplate";
 
 export const dynamic = "force-dynamic";
 
@@ -119,45 +120,30 @@ export async function GET() {
 
     const subject = `Your weekly leads report: ${thisCount} lead${thisCount !== 1 ? "s" : ""} this week`;
 
-    const htmlBody = `
-      <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto;">
-        <div style="background: #1e40af; padding: 20px 24px; border-radius: 12px 12px 0 0;">
-          <h2 style="color: white; margin: 0; font-size: 18px;">Weekly Report for ${businessName}</h2>
-          <p style="color: rgba(255,255,255,0.7); margin: 4px 0 0; font-size: 13px;">
-            Week of ${startOfThisWeek.toLocaleDateString("en-US", { month: "long", day: "numeric" })}
-          </p>
-        </div>
-        <div style="background: white; border: 1px solid #e2e8f0; border-top: none; padding: 24px; border-radius: 0 0 12px 12px;">
+    const portalUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://rocketradiosales.com";
+    const weekLabel = startOfThisWeek.toLocaleDateString("en-US", { month: "long", day: "numeric" });
 
-          <div style="display: flex; gap: 12px; margin-bottom: 20px;">
-            <div style="flex: 1; background: #f8fafc; border-radius: 8px; padding: 16px; text-align: center;">
-              <div style="font-size: 28px; font-weight: 700; color: #0f172a;">${thisCount}</div>
-              <div style="font-size: 12px; color: #64748b; margin-top: 2px;">New Leads</div>
-              <div style="font-size: 11px; color: ${trend >= 0 ? "#22c55e" : "#ef4444"}; margin-top: 4px;">${trendText}</div>
-            </div>
-            <div style="flex: 1; background: #f8fafc; border-radius: 8px; padding: 16px; text-align: center;">
-              <div style="font-size: 28px; font-weight: 700; color: #0f172a;">${booked}</div>
-              <div style="font-size: 12px; color: #64748b; margin-top: 2px;">Booked</div>
-            </div>
-            <div style="flex: 1; background: #f8fafc; border-radius: 8px; padding: 16px; text-align: center;">
-              <div style="font-size: 28px; font-weight: 700; color: #0f172a;">${closed}</div>
-              <div style="font-size: 12px; color: #64748b; margin-top: 2px;">Closed</div>
-            </div>
-          </div>
+    const statsHtml = emailStatRow([
+      emailStatCard(thisCount, "New Leads", trendText),
+      emailStatCard(booked, "Booked"),
+      emailStatCard(closed, "Closed"),
+    ]);
 
-          ${bestDay ? `<p style="font-size: 13px; color: #64748b; margin: 0 0 8px;">Best day: <strong style="color: #0f172a;">${bestDay[0]}</strong> (${bestDay[1]} lead${bestDay[1] !== 1 ? "s" : ""})</p>` : ""}
-          ${topSource && topSource[0] !== "Not specified" ? `<p style="font-size: 13px; color: #64748b; margin: 0 0 8px;">Top source: <strong style="color: #0f172a;">${topSource[0]}</strong> (${topSource[1]})</p>` : ""}
+    const detailRows = [
+      bestDay ? emailRow("Best day", `${bestDay[0]} (${bestDay[1]} lead${bestDay[1] !== 1 ? "s" : ""})`) : "",
+      topSource && topSource[0] !== "Not specified" ? emailRow("Top source", `${topSource[0]} (${topSource[1]})`) : "",
+    ].filter(Boolean).join("");
 
-          <div style="margin-top: 16px; padding: 12px; background: #f0fdf4; border-radius: 8px; font-size: 13px; color: #166534;">
-            &#x2713; Every lead received an instant response from your campaign.
-          </div>
-
-          <p style="margin-top: 16px; font-size: 13px; color: #64748b;">
-            View all leads and details in your <strong>Your Leads</strong> dashboard.
-          </p>
-        </div>
-      </div>
-    `;
+    const htmlBody = emailWrapper(
+      `Weekly Report for ${businessName}`,
+      `
+        <p style="margin: 0 0 16px; font-size: 13px; color: #5C6370;">Week of ${weekLabel}</p>
+        ${statsHtml}
+        ${detailRows ? `<table style="width: 100%; border-collapse: collapse; margin-bottom: 16px;">${detailRows}</table>` : ""}
+        ${emailSuccess("Every lead received an instant response from your campaign.")}
+        ${emailButton("View Your Dashboard", `${portalUrl}/portal`)}
+      `
+    );
 
     const plainBody = [
       `Weekly Report for ${businessName}`,

@@ -97,6 +97,33 @@ export function emailSuccess(text: string): string {
 }
 
 /**
+ * Stat card for digest emails — centered number + label + optional trend.
+ */
+export function emailStatCard(value: string | number, label: string, trend?: string): string {
+  const trendColor = trend?.startsWith("+") ? "#1B7A4A" : trend?.startsWith("-") ? "#C53030" : MUTED;
+  return `
+    <div style="flex: 1; background: ${BG}; border-radius: 10px; padding: 16px; text-align: center;">
+      <div style="font-size: 28px; font-weight: 700; color: ${NAVY};">${value}</div>
+      <div style="font-size: 12px; color: ${MUTED}; margin-top: 2px;">${label}</div>
+      ${trend ? `<div style="font-size: 11px; color: ${trendColor}; margin-top: 4px;">${trend}</div>` : ""}
+    </div>
+  `;
+}
+
+/**
+ * Row of stat cards (uses table for email client compatibility).
+ */
+export function emailStatRow(cards: string[]): string {
+  return `
+    <table style="width: 100%; border-collapse: separate; border-spacing: 8px 0; margin-bottom: 20px;">
+      <tr>
+        ${cards.map((c) => `<td style="width: ${Math.round(100 / cards.length)}%; vertical-align: top;">${c}</td>`).join("")}
+      </tr>
+    </table>
+  `;
+}
+
+/**
  * Info callout box (gold tint).
  */
 export function emailInfo(text: string): string {
