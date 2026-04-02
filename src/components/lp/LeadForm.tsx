@@ -29,6 +29,7 @@ interface LeadFormProps {
   shareText: string;
   showReferralSource?: boolean;
   metaPixelId?: string;
+  isDemo?: boolean;
 }
 
 export function LeadForm({
@@ -40,6 +41,7 @@ export function LeadForm({
   shareText,
   showReferralSource = false,
   metaPixelId,
+  isDemo = false,
 }: LeadFormProps) {
   const [values, setValues] = useState<Record<string, string>>({});
   const [referralSource, setReferralSource] = useState("");
@@ -63,6 +65,7 @@ export function LeadForm({
       if (!knownKeys.has(k) && v) extraFields[k] = v;
     }
     if (referralSource) extraFields["How did you hear about us?"] = referralSource;
+    if (isDemo) extraFields["demo"] = "true";
 
     try {
       const res = await fetch("/api/lp/leads", {

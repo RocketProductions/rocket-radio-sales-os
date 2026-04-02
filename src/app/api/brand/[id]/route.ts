@@ -24,6 +24,10 @@ const PatchSchema = z.object({
   trackingPhone:       z.string().nullish(),
   metaPixelId:         z.string().nullish(),
   smsKeyword:          z.string().nullish(),
+  googleAdsId:         z.string().nullish(),
+  tiktokPixelId:       z.string().nullish(),
+  calendarUrl:         z.string().nullish(),
+  calendarProvider:    z.string().nullish(),
 });
 
 interface RouteContext {
@@ -75,6 +79,10 @@ export async function PATCH(req: Request, { params }: RouteContext) {
     if (body.trackingPhone       !== undefined) updates.tracking_phone       = body.trackingPhone;
     if (body.metaPixelId         !== undefined) updates.meta_pixel_id        = body.metaPixelId;
     if (body.smsKeyword          !== undefined) updates.sms_keyword          = body.smsKeyword;
+    if (body.googleAdsId         !== undefined) updates.google_ads_id        = body.googleAdsId;
+    if (body.tiktokPixelId       !== undefined) updates.tiktok_pixel_id      = body.tiktokPixelId;
+    if (body.calendarUrl         !== undefined) updates.calendar_url         = body.calendarUrl;
+    if (body.calendarProvider    !== undefined) updates.calendar_provider    = body.calendarProvider;
 
     if (Object.keys(updates).length === 0) {
       return NextResponse.json({ ok: false, error: "Nothing to update" }, { status: 400 });

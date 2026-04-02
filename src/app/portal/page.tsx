@@ -20,6 +20,7 @@ type LpLead = {
   phone: string | null;
   status: string;
   created_at: string;
+  extra_fields: Record<string, string> | null;
   landing_pages: {
     business_name: string | null;
     slug: string;
@@ -38,13 +39,13 @@ export default async function PortalPage() {
   const { data: rawLeads } = await supabase
     .from("lp_leads")
     .select(`
-      id, name, email, phone, status, created_at,
+      id, name, email, phone, status, created_at, extra_fields,
       landing_pages ( business_name, slug, session_id )
     `)
     .order("created_at", { ascending: false })
     .limit(50);
 
-  let leads = (rawLeads ?? []) as unknown as LpLead[];
+  let leads = ((rawLeads ?? []) as unknown as LpLead[]).filter(l => l.extra_fields?.demo !== 'true');
 
   if (!isSuperAdmin && tenantId && leads.length > 0) {
     const sessionIds = leads

@@ -29,10 +29,13 @@ interface LandingPage {
 
 export default async function LandingPageRoute({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ demo?: string }>;
 }) {
   const { slug } = await params;
+  const resolvedSearchParams = await searchParams;
   const supabase = getSupabaseAdmin();
 
   const { data, error } = await supabase
@@ -50,17 +53,22 @@ export default async function LandingPageRoute({
   // Fetch tracking fields from brand_kits if linked
   let trackingPhone: string | null = null;
   let metaPixelId: string | null = null;
+  let googleAdsId: string | null = null;
+  let tiktokPixelId: string | null = null;
 
   if (page.brand_kit_id) {
     const { data: bk } = await supabase
       .from("brand_kits")
-      .select("tracking_phone, meta_pixel_id")
+      .select("tracking_phone, meta_pixel_id, google_ads_id, tiktok_pixel_id")
       .eq("id", page.brand_kit_id)
       .single();
 
     if (bk) {
-      trackingPhone = (bk as { tracking_phone: string | null }).tracking_phone;
-      metaPixelId = (bk as { meta_pixel_id: string | null }).meta_pixel_id;
+      const k = bk as { tracking_phone: string | null; meta_pixel_id: string | null; google_ads_id: string | null; tiktok_pixel_id: string | null };
+      trackingPhone = k.tracking_phone;
+      metaPixelId = k.meta_pixel_id;
+      googleAdsId = k.google_ads_id;
+      tiktokPixelId = k.tiktok_pixel_id;
     }
   }
 
@@ -119,7 +127,54 @@ export default async function LandingPageRoute({
         />
       )}
 
+      {/* Google Ads Remarketing */}
+      {googleAdsId && (
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', '${googleAdsId}');
+            `,
+          }}
+        />
+      )}
+      {googleAdsId && (
+        <script async src={`https://www.googletagmanager.com/gtag/js?id=${googleAdsId}`} />
+      )}
+
+      {/* TikTok Pixel */}
+      {tiktokPixelId && (
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              !function(w,d,t){w.TiktokAnalyticsObject=t;var ttq=w[t]=w[t]||[];
+              ttq.methods=["page","track","identify","instances","debug","on","off","once","ready","alias","group","enableCookie","disableCookie"];
+              ttq.setAndDefer=function(t,e){t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}};
+              for(var i=0;i<ttq.methods.length;i++)ttq.setAndDefer(ttq,ttq.methods[i]);
+              ttq.instance=function(t){for(var e=ttq._i[t]||[],n=0;n<ttq.methods.length;n++)ttq.setAndDefer(e,ttq.methods[n]);return e};
+              ttq.load=function(e,n){var i="https://analytics.tiktok.com/i18n/pixel/events.js";
+              ttq._i=ttq._i||{};ttq._i[e]=[];ttq._i[e]._u=i;ttq._t=ttq._t||{};ttq._t[e]=+new Date;
+              ttq._o=ttq._o||{};ttq._o[e]=n||{};
+              var o=document.createElement("script");o.type="text/javascript";o.async=!0;o.src=i+"?sdkid="+e+"&lib="+t;
+              var a=document.getElementsByTagName("script")[0];a.parentNode.insertBefore(o,a)};
+              ttq.load('${tiktokPixelId}');
+              ttq.page();
+            }(window, document, 'ttq');
+            `,
+          }}
+        />
+      )}
+
       <div className="min-h-screen bg-white font-sans">
+
+        {/* Demo mode banner — shown when ?demo=true */}
+        {resolvedSearchParams?.demo === 'true' && (
+          <div className="bg-amber-500 px-4 py-2 text-center text-sm font-medium text-white">
+            Demo Mode — this submission will be marked as a test lead
+          </div>
+        )}
 
         {/* ── Sticky nav ── */}
         <header className="lp-header sticky top-0 z-50 px-6 py-4 shadow-md">
@@ -212,6 +267,7 @@ export default async function LandingPageRoute({
                   shareText={`I just connected with ${businessName}! ${headline} — check out their offer:`}
                   showReferralSource
                   metaPixelId={metaPixelId ?? undefined}
+                  isDemo={resolvedSearchParams?.demo === 'true'}
                 />
               </div>
             </div>

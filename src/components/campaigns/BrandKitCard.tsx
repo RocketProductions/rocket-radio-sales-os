@@ -138,6 +138,10 @@ export function BrandKitCard({
     trackingPhone:       (kit as Record<string, unknown>).trackingPhone as string ?? "",
     metaPixelId:         (kit as Record<string, unknown>).metaPixelId   as string ?? "",
     smsKeyword:          (kit as Record<string, unknown>).smsKeyword    as string ?? "",
+    googleAdsId:         (kit as Record<string, unknown>).googleAdsId   as string ?? "",
+    tiktokPixelId:       (kit as Record<string, unknown>).tiktokPixelId as string ?? "",
+    calendarUrl:         (kit as Record<string, unknown>).calendarUrl   as string ?? "",
+    calendarProvider:    (kit as Record<string, unknown>).calendarProvider as string ?? "",
   });
 
   // Draft state (what's being edited)
@@ -189,6 +193,10 @@ export function BrandKitCard({
           trackingPhone:       draft.trackingPhone   || null,
           metaPixelId:         draft.metaPixelId     || null,
           smsKeyword:          draft.smsKeyword      || null,
+          googleAdsId:         draft.googleAdsId     || null,
+          tiktokPixelId:       draft.tiktokPixelId   || null,
+          calendarUrl:         draft.calendarUrl     || null,
+          calendarProvider:    draft.calendarProvider || null,
         }),
       });
       const json = await res.json() as { ok: boolean; error?: string };
@@ -420,6 +428,39 @@ export function BrandKitCard({
               />
               <p className="text-[10px] text-rocket-muted">Radio CTA: &ldquo;Text {draft.smsKeyword || "KEYWORD"} to 55555&rdquo; — auto-replies with landing page link.</p>
             </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-rocket-muted">Google Ads ID</label>
+              <Input
+                value={draft.googleAdsId}
+                onChange={(e) => setDraftField("googleAdsId", e.target.value)}
+                placeholder="AW-123456789"
+                className="text-xs font-mono"
+              />
+              <p className="text-[10px] text-rocket-muted">For Google Display Network retargeting. Auto-injected on landing page.</p>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-rocket-muted">TikTok Pixel ID</label>
+              <Input
+                value={draft.tiktokPixelId}
+                onChange={(e) => setDraftField("tiktokPixelId", e.target.value)}
+                placeholder="C123456789"
+                className="text-xs font-mono"
+              />
+              <p className="text-[10px] text-rocket-muted">For TikTok retargeting. Auto-injected on landing page.</p>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-rocket-muted">Booking Calendar URL</label>
+              <Input
+                value={draft.calendarUrl}
+                onChange={(e) => setDraftField("calendarUrl", e.target.value)}
+                placeholder="https://calendly.com/yourbusiness"
+                className="text-xs"
+              />
+              <p className="text-[10px] text-rocket-muted">Calendly, Acuity, or Google Calendar booking link. Connected bookings auto-update lead status.</p>
+            </div>
           </div>
 
           {saveError && (
@@ -556,7 +597,7 @@ export function BrandKitCard({
         </div>
 
         {/* Campaign tracking */}
-        {(view.trackingPhone || view.metaPixelId || view.smsKeyword) && (
+        {(view.trackingPhone || view.metaPixelId || view.smsKeyword || view.googleAdsId || view.tiktokPixelId || view.calendarUrl) && (
           <div className="grid gap-2 sm:grid-cols-3 pt-1 border-t border-rocket-border">
             {view.trackingPhone && (
               <div>
@@ -570,10 +611,28 @@ export function BrandKitCard({
                 <p className="text-xs text-rocket-dark font-mono">{view.metaPixelId}</p>
               </div>
             )}
+            {view.googleAdsId && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-rocket-muted mb-0.5">Google Ads</p>
+                <p className="text-xs text-rocket-dark font-mono">{view.googleAdsId}</p>
+              </div>
+            )}
+            {view.tiktokPixelId && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-rocket-muted mb-0.5">TikTok Pixel</p>
+                <p className="text-xs text-rocket-dark font-mono">{view.tiktokPixelId}</p>
+              </div>
+            )}
             {view.smsKeyword && (
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-rocket-muted mb-0.5">SMS Keyword</p>
                 <p className="text-xs text-rocket-dark font-mono">{view.smsKeyword}</p>
+              </div>
+            )}
+            {view.calendarUrl && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-rocket-muted mb-0.5">Booking Calendar</p>
+                <p className="text-xs text-rocket-dark truncate">{view.calendarUrl}</p>
               </div>
             )}
           </div>

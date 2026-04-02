@@ -54,7 +54,7 @@ export default async function ReportsPage() {
     : { data: [] };
 
   type LeadRow = { id: string; status: string; created_at: string; landing_page_id: string; extra_fields: Record<string, string> | null };
-  const allLeads = (allLeadRows ?? []) as LeadRow[];
+  const allLeads = ((allLeadRows ?? []) as LeadRow[]).filter(l => l.extra_fields?.demo !== 'true');
 
   // ─── Funnel counts ──────────────────────────────────────────────────────────
   const total     = allLeads.length;

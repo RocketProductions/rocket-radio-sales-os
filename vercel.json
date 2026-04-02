@@ -23,6 +23,22 @@
     {
       "path": "/api/cron/optimize-content",
       "schedule": "0 14 * * 2"
+    },
+    {
+      "path": "/api/cron/monthly-report",
+      "schedule": "0 14 1 * *"
+    },
+    {
+      "path": "/api/cron/reactivation",
+      "schedule": "0 15 * * 3"
+    },
+    {
+      "path": "/api/cron/review-request",
+      "schedule": "0 15 * * *"
+    },
+    {
+      "path": "/api/cron/campaign-refresh",
+      "schedule": "0 15 * * 5"
     }
   ]
 }

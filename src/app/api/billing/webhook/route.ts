@@ -13,7 +13,10 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
-import { verifyWebhookSignature } from "@/integrations/stripe";
+import { verifyWebhookSignature, TIER_CONFIGS, type BillingTier } from "@/integrations/stripe";
+import { sendEmailViaResend } from "@/integrations/email";
+import { sendSmsViaTwilio } from "@/integrations/sms";
+import { emailWrapper, emailButton } from "@/lib/emailTemplate";
 
 // Stripe sends raw body — disable Next.js body parsing
 export const runtime = "nodejs";
@@ -82,6 +85,121 @@ export async function POST(req: NextRequest) {
           .eq("id", tenantId);
 
         console.log(`[stripe/webhook] Subscription activated: tenant=${tenantId} tier=${tier}`);
+
+        // ── Welcome Sequence ────────────────────────────────────────
+        try {
+          // 1. Fetch client_owner for this tenant
+          const { data: owners } = await supabase
+            .from("app_users")
+            .select("email, name, phone")
+            .eq("tenant_id", tenantId)
+            .eq("role", "client_owner");
+
+          // Get business name from tenant
+          const { data: tenantRow } = await supabase
+            .from("tenants")
+            .select("name")
+            .eq("id", tenantId)
+            .single();
+
+          const businessName = (tenantRow as { name: string } | null)?.name ?? "your business";
+          const tierName = TIER_CONFIGS[tier as BillingTier]?.name ?? tier;
+          const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://rocketradiosales.com";
+          const repEmail = process.env.REP_NOTIFICATION_EMAIL ?? "christopher.alumbaugh@gmail.com";
+
+          if (owners && owners.length > 0) {
+            for (const owner of owners as { email: string; name: string | null; phone: string | null }[]) {
+              // 2. Send welcome email to client
+              if (owner.email) {
+                const welcomeHtml = emailWrapper(
+                  "Welcome to Rocket Radio",
+                  `
+                    <p style="margin: 0 0 16px; font-size: 15px; color: #0B1D3A; font-weight: 600;">
+                      Your campaign is live and leads are on the way.
+                    </p>
+                    <p style="margin: 0 0 20px; font-size: 13px; color: #5C6370;">
+                      Here are 3 things to know:
+                    </p>
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                      <tr>
+                        <td style="padding: 10px 0; font-size: 14px; color: #0B1D3A; border-bottom: 1px solid #E5E1D8;">
+                          <strong style="color: #D4A853;">1.</strong> Every lead gets a text in 60 seconds
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 10px 0; font-size: 14px; color: #0B1D3A; border-bottom: 1px solid #E5E1D8;">
+                          <strong style="color: #D4A853;">2.</strong> Check your dashboard anytime
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 10px 0; font-size: 14px; color: #0B1D3A;">
+                          <strong style="color: #D4A853;">3.</strong> Your strategist is here to help
+                        </td>
+                      </tr>
+                    </table>
+                    ${emailButton("View Your Dashboard", `${baseUrl}/portal`)}
+                  `
+                );
+
+                await sendEmailViaResend({
+                  to: owner.email,
+                  subject: "Your campaign is live — Rocket Radio",
+                  body: `Welcome to Rocket Radio!\n\nYour campaign is live and leads are on the way.\n\n3 things to know:\n1. Every lead gets a text in 60 seconds\n2. Check your dashboard anytime\n3. Your strategist is here to help\n\nView your dashboard: ${baseUrl}/portal`,
+                  htmlBody: welcomeHtml,
+                  tenantId,
+                });
+              }
+
+              // 3. Send welcome text
+              if (owner.phone) {
+                await sendSmsViaTwilio({
+                  to: owner.phone,
+                  body: `Welcome to Rocket Radio! Your campaign is live. Log in anytime to see your leads: ${baseUrl}/portal`,
+                  tenantId,
+                });
+              }
+            }
+          }
+
+          // 4. Send rep notification email
+          const tierPrices: Record<string, number> = { starter: 497, growth: 1497, scale: 2997 };
+          const price = tierPrices[tier] ?? 0;
+
+          const repHtml = emailWrapper(
+            "New Client Signed Up",
+            `
+              <p style="margin: 0 0 16px; font-size: 15px; color: #0B1D3A;">
+                <strong>${businessName}</strong> just signed up for <strong>${tierName}</strong>${price ? ` ($${price}/mo)` : ""}.
+              </p>
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                  <td style="padding: 8px 0; color: #5C6370; font-size: 13px; width: 110px;">Business</td>
+                  <td style="padding: 8px 0; font-size: 14px; color: #0B1D3A; font-weight: 600;">${businessName}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #5C6370; font-size: 13px;">Tier</td>
+                  <td style="padding: 8px 0; font-size: 14px; color: #0B1D3A;">${tierName}</td>
+                </tr>
+                ${price ? `<tr>
+                  <td style="padding: 8px 0; color: #5C6370; font-size: 13px;">Price</td>
+                  <td style="padding: 8px 0; font-size: 14px; color: #0B1D3A;">$${price}/mo</td>
+                </tr>` : ""}
+              </table>
+              ${emailButton("View Dashboard", `${baseUrl}/dashboard`)}
+            `
+          );
+
+          await sendEmailViaResend({
+            to: repEmail,
+            subject: `🎉 New client: ${businessName} signed up for ${tierName}`,
+            body: `New client: ${businessName} signed up for ${tierName}${price ? ` ($${price}/mo)` : ""}`,
+            htmlBody: repHtml,
+          });
+        } catch (welcomeErr) {
+          // Don't fail the webhook if welcome sequence errors — subscription is already active
+          console.error("[stripe/webhook] Welcome sequence error:", welcomeErr);
+        }
+
         break;
       }
 

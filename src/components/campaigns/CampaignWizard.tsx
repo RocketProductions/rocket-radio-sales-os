@@ -14,7 +14,7 @@ import { AssetToolbar } from "@/components/campaigns/AssetToolbar";
 import { useAsset, type AssetSeed } from "@/hooks/useAsset";
 import {
   Loader2, Sparkles, CheckCircle2, Radio, FileText,
-  MessageSquare, Globe, AlertCircle, Send, ExternalLink, Copy, Check, ClipboardList, Download,
+  MessageSquare, Globe, AlertCircle, Send, ExternalLink, Copy, Check, ClipboardList, Download, Smartphone,
 } from "lucide-react";
 import Link from "next/link";
 import type { BrandKit } from "@/ai/modes/brandAnalysis";
@@ -983,6 +983,14 @@ export function CampaignWizard({ initialData }: { initialData?: InitialSessionDa
                     </a>
                   </div>
                 </div>
+                <Button
+                  variant="outline"
+                  onClick={() => window.open(`${liveUrl}?demo=true`, '_blank')}
+                  className="w-full"
+                >
+                  <Smartphone className="mr-2 h-4 w-4" />
+                  Run Live Demo
+                </Button>
               </div>
             ) : (
               <div className="space-y-3">
