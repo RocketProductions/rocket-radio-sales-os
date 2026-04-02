@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollReveal } from "@/components/ui/scroll-reveal";
 import { AnimatedNumber } from "@/components/ui/animated-number";
-import { ArrowLeft, Check, Phone, Mail, ArrowRight, Radio, Globe, MessageSquare, TrendingUp, Zap } from "lucide-react";
+import { ArrowLeft, Check, Phone, Mail, ArrowRight, Radio, Globe, MessageSquare, TrendingUp, Zap, Rocket, Star } from "lucide-react";
 import { ProposalPrintButton } from "@/components/proposals/ProposalPrintButton";
 
 export const dynamic = "force-dynamic";
@@ -42,12 +42,27 @@ export default async function ProposalDetailPage({ params }: Props) {
   const biz = p.campaign_sessions?.business_name ?? "Your Business";
   const intake = p.campaign_sessions?.intake_form ?? {};
   const avgTicket = parseFloat(intake.avgTicket ?? "0") || 0;
+  const audience = intake.targetAudience ?? "";
 
+  // Brand kit — client's colors + our fallbacks
   let logoUrl: string | null = null;
+  let clientPrimary = "#0B1D3A";
+  let clientAccent = "#D4A853";
+  let uvp = "";
+  let tagline = "";
   const bkId = p.campaign_sessions?.brand_kit_id;
   if (bkId) {
-    const { data: bk } = await supabase.from("brand_kits").select("logo_url").eq("id", bkId).single();
-    if (bk) logoUrl = (bk as { logo_url: string | null }).logo_url;
+    const { data: bk } = await supabase.from("brand_kits")
+      .select("logo_url, primary_color, accent_color, unique_value_prop, tagline")
+      .eq("id", bkId).single();
+    if (bk) {
+      const k = bk as { logo_url: string | null; primary_color: string | null; accent_color: string | null; unique_value_prop: string | null; tagline: string | null };
+      logoUrl = k.logo_url;
+      if (k.primary_color) clientPrimary = k.primary_color;
+      if (k.accent_color) clientAccent = k.accent_color;
+      uvp = k.unique_value_prop ?? "";
+      tagline = k.tagline ?? "";
+    }
   }
 
   const leads = 80;
@@ -58,9 +73,9 @@ export default async function ProposalDetailPage({ params }: Props) {
   const date = new Date(p.created_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 
   const steps = [
-    { num: "01", title: "Radio Drives\nAwareness", sub: "Your spot runs on 95.3 MNC", icon: Radio },
-    { num: "02", title: "Landing Page\nCaptures Interest", sub: "Every visitor, one simple form", icon: Globe },
-    { num: "03", title: "Instant Follow-Up\nConverts", sub: "Text in 60 seconds + 4 more", icon: Zap },
+    { num: "01", title: "Radio Drives\nAwareness", sub: "Your spot on 95.3 MNC", icon: Radio },
+    { num: "02", title: "Landing Page\nCaptures Interest", sub: "Every visitor, one form", icon: Globe },
+    { num: "03", title: "Instant Follow-Up\nConverts", sub: "Text in 60 sec + 4 more", icon: Zap },
     { num: "04", title: "Dashboard\nShows Results", sub: "Every lead, every close", icon: TrendingUp },
   ];
 
@@ -85,31 +100,97 @@ export default async function ProposalDetailPage({ params }: Props) {
         </div>
       </div>
 
-      {/* ═══ DECK ═══ */}
-      <div className="mx-auto max-w-4xl overflow-hidden rounded-2xl shadow-2xl print:shadow-none print:rounded-none">
+      <div className="mx-auto max-w-4xl overflow-hidden rounded-2xl shadow-2xl print:shadow-none print:rounded-none [&_.sr-animated]:print:opacity-100 [&_.sr-animated]:print:translate-y-0 [&_.sr-animated]:print:translate-x-0">
 
-        {/* ── 1. COVER ── */}
-        <section className="relative bg-[#0B1D3A] px-12 py-20 md:py-28 text-white overflow-hidden">
+        {/* ═══════════════════════════════════════════════════════
+            CLIENT BRANDED SECTION — their colors, their story
+            ═══════════════════════════════════════════════════════ */}
+
+        {/* ── 1. COVER — Client's brand ──────────────────────── */}
+        <section className="relative px-12 py-20 md:py-28 text-white overflow-hidden" style={{ backgroundColor: clientPrimary }}>
           <div className="relative z-10">
-            {logoUrl && (
+            {/* Client logo — LARGE */}
+            {logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={logoUrl} alt="" className="h-8 w-auto mb-10 brightness-0 invert opacity-60" />
+              <img src={logoUrl} alt={biz} className="h-16 md:h-20 w-auto mb-10 object-contain" />
+            ) : (
+              <h2 className="text-3xl md:text-4xl font-bold mb-10 opacity-80">{biz}</h2>
             )}
-            <p className="text-xs font-medium uppercase tracking-[0.25em] text-[#D4A853]">Campaign Proposal</p>
+            <p className="text-xs font-medium uppercase tracking-[0.25em] opacity-60">Campaign Proposal</p>
             <h1 className="mt-4 text-4xl md:text-6xl font-bold leading-[1.1] tracking-tight max-w-xl">
               {p.title}
             </h1>
-            <div className="mt-8 flex items-center gap-3 text-sm text-white/50">
-              <span>Prepared for {biz}</span>
-              <span className="h-1 w-1 rounded-full bg-white/30" />
+            {tagline && (
+              <p className="mt-4 text-lg opacity-60 italic">&ldquo;{tagline}&rdquo;</p>
+            )}
+            <div className="mt-8 flex items-center gap-3 text-sm opacity-40">
               <span>{date}</span>
             </div>
           </div>
-          <div className="absolute right-0 top-0 h-full w-1/3 bg-gradient-to-l from-[#D4A853]/10 to-transparent" />
-          <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-[#D4A853] via-[#D4A853]/40 to-transparent" />
+          <div className="absolute right-0 top-0 h-full w-1/3 bg-gradient-to-l from-white/5 to-transparent" />
+          <div className="absolute bottom-0 left-0 right-0 h-1" style={{ background: `linear-gradient(to right, ${clientAccent}, ${clientAccent}66, transparent)` }} />
         </section>
 
-        {/* ── 2. THE PROBLEM ── */}
+        {/* ── 2. THE BIG IDEA — Client's colors ──────────────── */}
+        {p.big_idea && (
+          <ScrollReveal duration={800} direction="none">
+            <section className="px-12 py-16 md:py-20" style={{ backgroundColor: `${clientPrimary}F0` }}>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: clientAccent }}>The Big Idea</p>
+              <h2 className="mt-6 text-3xl md:text-5xl font-bold leading-tight text-white max-w-2xl">
+                {p.big_idea}
+              </h2>
+            </section>
+          </ScrollReveal>
+        )}
+
+        {/* ── 3. WHY [BUSINESS] — Client's differentiators ──── */}
+        {(uvp || audience || p.offer_text) && (
+          <ScrollReveal>
+            <section className="bg-white px-12 py-16 md:py-20">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: clientAccent }}>
+                Why {biz}
+              </p>
+              <div className="mt-6 grid gap-8 sm:grid-cols-2">
+                {p.offer_text && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Star className="h-4 w-4" style={{ color: clientAccent }} />
+                      <p className="text-sm font-semibold text-[#0B1D3A]">The Offer</p>
+                    </div>
+                    <p className="text-sm text-[#5C6370] leading-relaxed">{p.offer_text}</p>
+                  </div>
+                )}
+                {uvp && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Star className="h-4 w-4" style={{ color: clientAccent }} />
+                      <p className="text-sm font-semibold text-[#0B1D3A]">What Makes Them Different</p>
+                    </div>
+                    <p className="text-sm text-[#5C6370] leading-relaxed">{uvp}</p>
+                  </div>
+                )}
+                {audience && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Star className="h-4 w-4" style={{ color: clientAccent }} />
+                      <p className="text-sm font-semibold text-[#0B1D3A]">Who We&apos;re Reaching</p>
+                    </div>
+                    <p className="text-sm text-[#5C6370] leading-relaxed">{audience}</p>
+                  </div>
+                )}
+              </div>
+            </section>
+          </ScrollReveal>
+        )}
+
+        {/* ── Transition divider — client → system ──────────── */}
+        <div className="h-2" style={{ background: `linear-gradient(to right, ${clientPrimary}, #0B1D3A)` }} />
+
+        {/* ═══════════════════════════════════════════════════════
+            ROCKET RADIO SYSTEM — our brand, our process
+            ═══════════════════════════════════════════════════════ */}
+
+        {/* ── 4. THE PROBLEM ──────────────────────────────────── */}
         <ScrollReveal>
           <section className="bg-white px-12 py-16 md:py-20">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#D4A853]">The Problem</p>
@@ -121,8 +202,11 @@ export default async function ProposalDetailPage({ params }: Props) {
               The competitor who calls back first wins the job.
             </p>
             <ScrollReveal delay={200} direction="left">
-              <div className="mt-10 inline-flex items-center gap-4 rounded-2xl bg-[#F5F3EF] px-8 py-5">
-                <span className="text-5xl font-bold text-[#0B1D3A]">73%</span>
+              <div className="mt-10 inline-flex items-center gap-5 rounded-2xl bg-[#F5F3EF] px-8 py-6">
+                <div className="relative">
+                  <span className="text-5xl font-bold text-[#0B1D3A]">73%</span>
+                  <div className="absolute -inset-3 rounded-full bg-[#D4A853]/5 -z-10" />
+                </div>
                 <span className="text-sm text-[#5C6370] max-w-[200px] leading-snug">
                   of leads go to the business that responds within 5 minutes
                 </span>
@@ -131,44 +215,30 @@ export default async function ProposalDetailPage({ params }: Props) {
           </section>
         </ScrollReveal>
 
-        {/* ── 3. THE BIG IDEA ── */}
-        {p.big_idea && (
-          <ScrollReveal duration={800} direction="none">
-            <section className="bg-[#0B1D3A] px-12 py-16 md:py-20">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#D4A853]">The Big Idea</p>
-              <h2 className="mt-6 text-3xl md:text-5xl font-bold leading-tight text-white max-w-2xl">
-                {p.big_idea}
-              </h2>
-            </section>
-          </ScrollReveal>
-        )}
-
-        {/* ── 4. HOW IT WORKS ── */}
-        <ScrollReveal>
-          <section className="bg-white px-12 py-16 md:py-20">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#D4A853]">How It Works</p>
-            <h2 className="mt-4 text-2xl md:text-3xl font-bold text-[#0B1D3A]">The 4-Part Revenue System</h2>
-            <div className="mt-10 grid gap-0 sm:grid-cols-4">
-              {steps.map((s, i) => (
-                <ScrollReveal key={i} delay={i * 120} direction="up">
-                  <div className="relative py-6 pr-6">
-                    <span className="text-[64px] font-bold leading-none text-[#F5F3EF]">{s.num}</span>
-                    <div className="flex items-center gap-2 mt-2">
-                      <s.icon className="h-4 w-4 text-[#D4A853] shrink-0" />
-                      <p className="text-sm font-semibold text-[#0B1D3A] whitespace-pre-line leading-snug">{s.title}</p>
-                    </div>
-                    <p className="mt-1 text-xs text-[#5C6370] pl-6">{s.sub}</p>
-                    {i < 3 && (
-                      <ArrowRight className="absolute right-0 top-1/2 -translate-y-1/2 h-4 w-4 text-[#E5E1D8] hidden sm:block" />
-                    )}
+        {/* ── 5. HOW IT WORKS ─────────────────────────────────── */}
+        <section className="bg-[#0B1D3A] px-12 py-16 md:py-20">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#D4A853]">How It Works</p>
+          <h2 className="mt-4 text-2xl md:text-3xl font-bold text-white">The 4-Part Revenue System</h2>
+          <div className="mt-10 grid gap-0 sm:grid-cols-4">
+            {steps.map((s, i) => (
+              <ScrollReveal key={i} delay={i * 120} direction="up">
+                <div className="relative py-6 pr-6">
+                  <span className="text-[64px] font-bold leading-none text-white/5">{s.num}</span>
+                  <div className="flex items-center gap-2 mt-2">
+                    <s.icon className="h-4 w-4 text-[#D4A853] shrink-0" />
+                    <p className="text-sm font-semibold text-white whitespace-pre-line leading-snug">{s.title}</p>
                   </div>
-                </ScrollReveal>
-              ))}
-            </div>
-          </section>
-        </ScrollReveal>
+                  <p className="mt-1 text-xs text-white/40 pl-6">{s.sub}</p>
+                  {i < 3 && (
+                    <ArrowRight className="absolute right-0 top-1/2 -translate-y-1/2 h-4 w-4 text-white/10 hidden sm:block" />
+                  )}
+                </div>
+              </ScrollReveal>
+            ))}
+          </div>
+        </section>
 
-        {/* ── 5. RADIO SCRIPT ── */}
+        {/* ── 6. RADIO SCRIPT ─────────────────────────────────── */}
         {p.radio_script && (
           <ScrollReveal>
             <section className="bg-[#F5F3EF] px-12 py-16 md:py-20">
@@ -190,7 +260,7 @@ export default async function ProposalDetailPage({ params }: Props) {
           </ScrollReveal>
         )}
 
-        {/* ── 6. LANDING PAGE ── */}
+        {/* ── 7. LANDING PAGE ─────────────────────────────────── */}
         {(p.funnel_headline || p.funnel_body) && (
           <ScrollReveal>
             <section className="bg-white px-12 py-16 md:py-20">
@@ -200,7 +270,7 @@ export default async function ProposalDetailPage({ params }: Props) {
               </div>
               <p className="mt-1 text-xs text-[#5C6370]">Built and ready to go live</p>
               <ScrollReveal delay={150}>
-                <div className="mt-6 rounded-2xl bg-[#F5F3EF] border border-[#E5E1D8] overflow-hidden transition-transform duration-500">
+                <div className="mt-6 rounded-2xl bg-[#F5F3EF] border border-[#E5E1D8] overflow-hidden">
                   <div className="bg-[#0B1D3A] px-4 py-2 flex items-center gap-2">
                     <div className="flex gap-1.5">
                       <div className="h-2.5 w-2.5 rounded-full bg-white/20" />
@@ -208,7 +278,7 @@ export default async function ProposalDetailPage({ params }: Props) {
                       <div className="h-2.5 w-2.5 rounded-full bg-white/20" />
                     </div>
                     <div className="flex-1 rounded bg-white/10 px-3 py-0.5 text-[10px] text-white/40 font-mono">
-                      yourbusiness.com/offer
+                      {biz.toLowerCase().replace(/[^a-z0-9]+/g, "")}.com/offer
                     </div>
                   </div>
                   <div className="p-8">
@@ -220,7 +290,7 @@ export default async function ProposalDetailPage({ params }: Props) {
                         {p.funnel_body}
                       </p>
                     )}
-                    <div className="mt-4 inline-block rounded-lg bg-[#D4A853] px-6 py-2 text-sm font-semibold text-white">
+                    <div className="mt-4 inline-block rounded-lg px-6 py-2 text-sm font-semibold text-white" style={{ backgroundColor: clientAccent || "#D4A853" }}>
                       Get My Free Estimate
                     </div>
                   </div>
@@ -230,7 +300,7 @@ export default async function ProposalDetailPage({ params }: Props) {
           </ScrollReveal>
         )}
 
-        {/* ── 7. FOLLOW-UP ── */}
+        {/* ── 8. FOLLOW-UP ────────────────────────────────────── */}
         <ScrollReveal>
           <section className="bg-[#0B1D3A] px-12 py-16 md:py-20 text-white">
             <div className="flex items-center gap-2">
@@ -242,11 +312,7 @@ export default async function ProposalDetailPage({ params }: Props) {
             <div className="mt-10 flex flex-wrap gap-3">
               {sequence.map((s, i) => (
                 <ScrollReveal key={i} delay={i * 80} direction="up">
-                  <div
-                    className={`flex-1 min-w-[100px] rounded-xl px-4 py-4 text-center ${
-                      s.highlight ? "bg-[#D4A853] text-[#0B1D3A]" : "bg-white/5 text-white"
-                    }`}
-                  >
+                  <div className={`flex-1 min-w-[100px] rounded-xl px-4 py-4 text-center ${s.highlight ? "bg-[#D4A853] text-[#0B1D3A]" : "bg-white/5 text-white"}`}>
                     <p className={`text-lg font-bold ${s.highlight ? "" : "text-white"}`}>{s.time}</p>
                     <p className={`text-xs mt-0.5 ${s.highlight ? "text-[#0B1D3A]/70" : "text-white/50"}`}>{s.label}</p>
                   </div>
@@ -257,7 +323,7 @@ export default async function ProposalDetailPage({ params }: Props) {
           </section>
         </ScrollReveal>
 
-        {/* ── 8. ROI ── */}
+        {/* ── 9. ROI ──────────────────────────────────────────── */}
         {avgTicket > 0 && (
           <ScrollReveal>
             <section className="bg-white px-12 py-16 md:py-20">
@@ -267,27 +333,19 @@ export default async function ProposalDetailPage({ params }: Props) {
               </div>
               <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-6">
                 <div>
-                  <p className="text-5xl font-bold text-[#0B1D3A]">
-                    <AnimatedNumber value={leads} suffix="+" />
-                  </p>
+                  <p className="text-5xl font-bold text-[#0B1D3A]"><AnimatedNumber value={leads} suffix="+" /></p>
                   <p className="mt-1 text-sm text-[#5C6370]">leads per month</p>
                 </div>
                 <div>
-                  <p className="text-5xl font-bold text-[#0B1D3A]">
-                    <AnimatedNumber value={customers} />
-                  </p>
+                  <p className="text-5xl font-bold text-[#0B1D3A]"><AnimatedNumber value={customers} /></p>
                   <p className="mt-1 text-sm text-[#5C6370]">new customers</p>
                 </div>
                 <div>
-                  <p className="text-5xl font-bold text-[#0B1D3A]">
-                    <AnimatedNumber value={revenue} prefix="$" />
-                  </p>
+                  <p className="text-5xl font-bold text-[#0B1D3A]"><AnimatedNumber value={revenue} prefix="$" /></p>
                   <p className="mt-1 text-sm text-[#5C6370]">estimated revenue</p>
                 </div>
                 <div>
-                  <p className="text-5xl font-bold text-[#D4A853]">
-                    <AnimatedNumber value={roi} suffix="x" decimals={1} />
-                  </p>
+                  <p className="text-5xl font-bold text-[#D4A853]"><AnimatedNumber value={roi} suffix="x" decimals={1} /></p>
                   <p className="mt-1 text-sm text-[#5C6370]">return on {tier.price}/mo</p>
                 </div>
               </div>
@@ -298,7 +356,7 @@ export default async function ProposalDetailPage({ params }: Props) {
           </ScrollReveal>
         )}
 
-        {/* ── 9. INVESTMENT ── */}
+        {/* ── 10. INVESTMENT ──────────────────────────────────── */}
         <ScrollReveal>
           <section className="bg-[#F5F3EF] px-12 py-16 md:py-20">
             <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-8">
@@ -308,7 +366,7 @@ export default async function ProposalDetailPage({ params }: Props) {
                   <span className="text-5xl md:text-6xl font-bold text-[#0B1D3A]">{tier.price}</span>
                   <span className="text-lg text-[#5C6370]">/mo</span>
                 </div>
-                <p className="mt-2 text-sm text-[#5C6370]">{tier.label} plan &middot; Month-to-month &middot; Cancel anytime</p>
+                <p className="mt-2 text-sm text-[#5C6370]">{tier.label} &middot; Month-to-month &middot; Cancel anytime</p>
               </div>
               <div className="space-y-2.5">
                 {tier.features.map((f, i) => (
@@ -324,17 +382,20 @@ export default async function ProposalDetailPage({ params }: Props) {
           </section>
         </ScrollReveal>
 
-        {/* ── 10. CTA ── */}
+        {/* ── 11. CTA ─────────────────────────────────────────── */}
         <ScrollReveal duration={800} direction="none">
           <section className="bg-[#0B1D3A] px-12 py-16 md:py-20 text-center text-white">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#D4A853]">Next Step</p>
-            <h2 className="mt-4 text-3xl md:text-4xl font-bold max-w-lg mx-auto leading-tight">
+            <Rocket className="h-6 w-6 text-[#D4A853] mx-auto mb-4" />
+            <h2 className="text-3xl md:text-4xl font-bold max-w-lg mx-auto leading-tight">
               Your campaign is built. Ready when you are.
             </h2>
             <p className="mt-4 text-white/50 max-w-md mx-auto">
               Your radio script, landing page, and follow-up sequence are ready to go live.
-              All we need is your go-ahead.
             </p>
+            {/* Gold CTA button (visual emphasis, not functional) */}
+            <div className="mt-8 inline-flex items-center gap-2 rounded-full bg-[#D4A853] px-8 py-3 text-sm font-bold text-[#0B1D3A]">
+              Let&apos;s Get Started <ArrowRight className="h-4 w-4" />
+            </div>
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4 text-sm text-white/60">
               <span className="flex items-center gap-2"><Phone className="h-3.5 w-3.5" /> (260) 447-5511</span>
               <span className="hidden sm:block h-1 w-1 rounded-full bg-white/30" />
@@ -342,7 +403,7 @@ export default async function ProposalDetailPage({ params }: Props) {
             </div>
             <div className="mt-10 h-px bg-gradient-to-r from-transparent via-[#D4A853]/30 to-transparent" />
             <p className="mt-6 text-xs text-white/30">
-              &copy; {new Date().getFullYear()} Federated Media &middot; Fort Wayne, Indiana
+              Powered by Federated Media &middot; 95.3 MNC &middot; Fort Wayne, Indiana
             </p>
           </section>
         </ScrollReveal>
@@ -356,7 +417,6 @@ export default async function ProposalDetailPage({ params }: Props) {
         </div>
       )}
 
-      {/* Actions */}
       <div className="mx-auto max-w-4xl flex gap-3 mt-6 pb-8 print:hidden">
         <ProposalPrintButton />
         <Link href="/dashboard/proposals" className="flex-1">

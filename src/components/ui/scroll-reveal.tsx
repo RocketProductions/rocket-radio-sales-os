@@ -52,8 +52,9 @@ export function ScrollReveal({
     <div
       ref={ref}
       className={cn(
-        "transition-all ease-out",
+        "transition-all ease-out sr-animated",
         visible ? "opacity-100 translate-x-0 translate-y-0" : `opacity-0 ${DIRECTION_CLASSES[direction]}`,
+        "print:opacity-100 print:translate-x-0 print:translate-y-0",
         className
       )}
       style={{
