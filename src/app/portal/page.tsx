@@ -70,6 +70,23 @@ export default async function PortalPage() {
     closed:    leads.filter((l) => l.status === "closed").length,
   };
 
+  // Fetch avg ticket for ROI calculation
+  let avgTicket = 0;
+  if (tenantId) {
+    const { data: sessions } = await supabase
+      .from("campaign_sessions")
+      .select("intake_form")
+      .eq("tenant_id", tenantId)
+      .limit(1);
+    if (sessions && sessions.length > 0) {
+      const intake = (sessions[0] as { intake_form: Record<string, string> | null }).intake_form;
+      avgTicket = parseFloat(intake?.avgTicket ?? "0") || 0;
+    }
+  }
+
+  const estimatedRevenue = (stats.booked + stats.closed) * avgTicket;
+  const hasRoi = avgTicket > 0 && (stats.booked + stats.closed) > 0;
+
   const activityItems = leads.slice(0, 15).map((l) => ({
     id:        l.id,
     message:   `New lead: ${l.name ?? "Unknown"} from ${l.landing_pages?.business_name ?? "landing page"}`,
@@ -105,6 +122,31 @@ export default async function PortalPage() {
           </Card>
         ))}
       </div>
+
+      {/* ROI Card — the number that prevents cancellation */}
+      {hasRoi && (
+        <Card className="relative overflow-hidden border-rocket-success/30 bg-gradient-to-r from-rocket-success-bright/5 to-transparent animate-fade-in-up">
+          <div className="absolute inset-y-0 left-0 w-1.5 bg-rocket-success-bright" />
+          <CardContent className="flex items-center justify-between gap-6 py-5 pl-6">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-rocket-muted">Estimated Revenue from Leads</p>
+              <p className="mt-1 text-3xl font-bold tracking-tight text-rocket-dark">
+                ${estimatedRevenue.toLocaleString()}
+              </p>
+              <p className="mt-0.5 text-sm text-rocket-muted">
+                {stats.booked + stats.closed} booked/closed &times; ${avgTicket.toLocaleString()} avg ticket
+              </p>
+            </div>
+            <div className="text-right shrink-0">
+              <p className="text-xs font-medium uppercase tracking-wide text-rocket-muted">Your Campaign ROI</p>
+              <p className="mt-1 text-4xl font-bold text-rocket-success">
+                {estimatedRevenue > 0 ? `${(estimatedRevenue / 1497).toFixed(1)}x` : "—"}
+              </p>
+              <p className="mt-0.5 text-xs text-rocket-muted">return on investment</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-5">
         {/* Recent Leads — wider */}

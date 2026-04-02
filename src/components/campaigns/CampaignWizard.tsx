@@ -32,6 +32,7 @@ interface IntakeForm {
   targetAudience: string;
   offer: string;
   seasonality: string;
+  avgTicket: string;  // average customer value in dollars
 }
 
 interface IntakeResult {
@@ -124,6 +125,7 @@ export function CampaignWizard({ initialData }: { initialData?: InitialSessionDa
     targetAudience: initialData?.intakeForm?.targetAudience ?? "",
     offer:          initialData?.intakeForm?.offer          ?? "",
     seasonality:    initialData?.intakeForm?.seasonality    ?? "",
+    avgTicket:      initialData?.intakeForm?.avgTicket      ?? "",
   });
 
   const [generatingKey, setGeneratingKey] = useState<string | null>(null);
@@ -314,6 +316,7 @@ export function CampaignWizard({ initialData }: { initialData?: InitialSessionDa
             targetAudience: form.targetAudience,
             offer:          form.offer,
             seasonality:    form.seasonality,
+            avgTicket:      form.avgTicket,
           },
           ...extra,
         }),
@@ -634,6 +637,23 @@ export function CampaignWizard({ initialData }: { initialData?: InitialSessionDa
                 placeholder="e.g. Spring storm season"
                 className={aiSuggestedFields.includes("seasonality") ? "border-blue-300 bg-blue-50/30" : ""}
               />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium">
+                Average Customer Value <span className="text-rocket-danger">*</span>
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-rocket-muted">$</span>
+                <Input
+                  type="number"
+                  min="1"
+                  value={form.avgTicket}
+                  onChange={(e) => update("avgTicket", e.target.value)}
+                  placeholder="e.g. 150"
+                  className="pl-7"
+                />
+              </div>
+              <p className="mt-1 text-xs text-rocket-muted">What does an average customer spend? Used for ROI projections in proposals and your dashboard.</p>
             </div>
           </div>
 
