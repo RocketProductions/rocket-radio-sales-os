@@ -244,11 +244,11 @@ export default function GetStartedPage() {
                 <select
                   value={referral}
                   onChange={(e) => setReferral(e.target.value)}
-                  className="flex h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3.5 py-2 text-sm text-white transition-colors duration-150 hover:border-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4A853] focus-visible:ring-offset-2 focus-visible:ring-offset-[#030712]"
+                  className="flex h-10 w-full rounded-lg border border-white/10 bg-white/10 px-3.5 py-2 text-sm text-white transition-colors duration-150 hover:border-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4A853] focus-visible:ring-offset-2 focus-visible:ring-offset-[#030712]"
                 >
-                  <option value="">Select one...</option>
+                  <option value="" className="bg-[#0B1D3A] text-white">Select one...</option>
                   {REFERRAL_OPTIONS.map((opt) => (
-                    <option key={opt} value={opt}>{opt}</option>
+                    <option key={opt} value={opt} className="bg-[#0B1D3A] text-white">{opt}</option>
                   ))}
                 </select>
               </div>
