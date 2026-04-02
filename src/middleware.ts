@@ -48,6 +48,7 @@ function getSecret(): Uint8Array {
 }
 
 function isPublic(pathname: string): boolean {
+  if (pathname === "/") return true; // homepage is public
   return PUBLIC_ROUTES.some(
     (route) => pathname === route || pathname.startsWith(route + "/"),
   );
