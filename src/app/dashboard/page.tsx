@@ -8,9 +8,21 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/page-header";
 import {
   Users, Megaphone, UserCheck, ChevronRight, CalendarCheck, Inbox, Plus,
+  AlertTriangle,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
+
+type ClientAlert = {
+  id: string;
+  campaign_session_id: string;
+  alert_type: string;
+  severity: string;
+  message: string;
+  recommendation: string | null;
+  created_at: string;
+  business_name?: string;
+};
 
 type LpLead = {
   id: string;
@@ -65,9 +77,17 @@ export default async function DashboardPage() {
     }
   }
 
+  // Fetch unresolved client alerts
+  const { data: rawAlerts } = await supabase
+    .from("client_alerts")
+    .select("id, campaign_session_id, alert_type, severity, message, recommendation, created_at")
+    .eq("resolved", false)
+    .order("created_at", { ascending: false })
+    .limit(5);
+
   const campaignQuery = supabase
     .from("campaign_sessions")
-    .select("id, business_name, status, created_at")
+    .select("id, business_name, status, created_at, session_id")
     .order("created_at", { ascending: false });
 
   if (!isSuperAdmin && tenantId) {
@@ -76,6 +96,16 @@ export default async function DashboardPage() {
 
   const { data: campaignSessions } = await campaignQuery.limit(100);
   const campaigns = campaignSessions ?? [];
+
+  // Enrich alerts with business names from campaign_sessions
+  const sessionNameMap = new Map(
+    campaigns.map((c: { session_id?: string; business_name: string }) => [c.session_id, c.business_name]),
+  );
+  const alerts: ClientAlert[] = (rawAlerts ?? []).map((a) => ({
+    ...(a as ClientAlert),
+    business_name: sessionNameMap.get(a.campaign_session_id as string) ?? "Unknown Client",
+  }));
+
   const activeCampaigns = campaigns.filter(
     (c: { status: string }) => c.status === "active" || c.status === "published",
   );
@@ -115,6 +145,65 @@ export default async function DashboardPage() {
         title="Dashboard"
         subtitle="Your campaigns, leads, and client activity at a glance."
       />
+
+      {/* Unresolved Client Alerts */}
+      {alerts.length > 0 && (
+        <Card
+          className={`animate-fade-in-up ${
+            alerts.some((a) => a.severity === "critical")
+              ? "border-red-200 bg-red-50"
+              : "border-amber-200 bg-amber-50"
+          }`}
+        >
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-600" />
+              <CardTitle className="text-base font-semibold">
+                Campaigns Need Attention
+              </CardTitle>
+              <Badge variant="outline" className="border-amber-300 bg-amber-100 text-amber-800 text-xs">
+                {alerts.length}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {alerts.map((alert) => (
+              <div
+                key={alert.id}
+                className={`rounded-lg border p-3 ${
+                  alert.severity === "critical"
+                    ? "border-red-200 bg-white"
+                    : "border-amber-200 bg-white"
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-rocket-dark">
+                      {alert.business_name}
+                    </p>
+                    <p className="mt-0.5 text-sm text-rocket-muted">{alert.message}</p>
+                    {alert.recommendation && (
+                      <p className="mt-1.5 text-xs italic text-rocket-muted/80">
+                        {alert.recommendation}
+                      </p>
+                    )}
+                  </div>
+                  <Badge
+                    variant="outline"
+                    className={
+                      alert.severity === "critical"
+                        ? "shrink-0 border-red-200 bg-red-50 text-red-700 text-xs"
+                        : "shrink-0 border-amber-200 bg-amber-50 text-amber-700 text-xs"
+                    }
+                  >
+                    {alert.severity}
+                  </Badge>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stats */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 stagger-children">

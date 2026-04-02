@@ -34,6 +34,12 @@ const PUBLIC_ROUTES = [
   "/terms",              // Terms & conditions — public
   "/get-started",        // Rocket Radio's own lead capture — public
   "/api/get-started",    // Get-started form submission — public
+  // Cron endpoints — Vercel Cron calls without cookies
+  "/api/cron",           // All cron jobs (ops-report, client-success, outreach-followup, optimize-content, process-automations, weekly-digest)
+  // Agent endpoints — called internally from other API routes
+  "/api/agents",         // All agent endpoints (triage, outreach)
+  // Webhook endpoints
+  "/api/webhooks",       // Resend, SMS inbound
 ];
 
 // Routes that require rep/admin/super_admin role
