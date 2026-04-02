@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/ops-report",
       "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/cron/client-success",
+      "schedule": "0 13 * * *"
     }
   ]
 }
