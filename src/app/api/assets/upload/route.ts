@@ -93,6 +93,11 @@ export async function POST(req: Request) {
       throw new Error(`Database insert failed: ${dbError.message}`);
     }
 
+    // Generate signed URL for immediate display
+    const { data: signed } = await supabase.storage
+      .from("brand-uploads")
+      .createSignedUrl(storagePath, 3600);
+
     return NextResponse.json({
       ok: true,
       asset: {
@@ -103,8 +108,12 @@ export async function POST(req: Request) {
         category: asset.category,
         file_size: asset.file_size,
         storage_path: asset.storage_path,
+        session_id: sessionId,
+        tenant_id: tenantId,
+        owner_type: ownerType,
         created_at: asset.created_at,
-        extracted_text: extractedText ? true : false, // boolean hint for UI
+        signedUrl: signed?.signedUrl ?? null,
+        extracted_text: extractedText ? true : false,
       },
     });
   } catch (err) {
