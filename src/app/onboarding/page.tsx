@@ -249,7 +249,7 @@ export default function OnboardingPage() {
                     onClick={() => setTier(t.value)}
                     className={`rounded-xl border p-5 text-left transition-all ${
                       tier === t.value
-                        ? "border-rocket-accent bg-rocket-accent/5 ring-2 ring-rocket-accent"
+                        ? "border-rocket-accent-bright bg-rocket-accent-bright/5 ring-2 ring-rocket-accent-bright"
                         : "border-rocket-border bg-white hover:border-rocket-muted"
                     }`}
                   >

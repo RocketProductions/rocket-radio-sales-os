@@ -52,12 +52,12 @@ function LoginForm() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 via-white to-blue-50/40 px-4">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-rocket-bg via-white to-rocket-accent-bright/5 px-4">
       <div className="w-full max-w-sm animate-fade-in-up">
         {/* Logo */}
         <div className="mb-8 flex flex-col items-center gap-3 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rocket-accent/10 shadow-sm">
-            <Rocket className="h-6 w-6 text-rocket-accent" />
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rocket-accent-bright/10 shadow-sm">
+            <Rocket className="h-6 w-6 text-rocket-accent-bright" />
           </div>
           <div>
             <h1 className="text-xl font-semibold tracking-tight text-rocket-dark">Rocket Radio</h1>

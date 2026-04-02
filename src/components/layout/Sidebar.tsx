@@ -80,10 +80,10 @@ export function Sidebar({
         collapsed ? "px-0 justify-center" : "px-4 gap-2.5"
       )}>
         <div className={cn(
-          "flex items-center justify-center rounded-lg bg-rocket-accent/10",
+          "flex items-center justify-center rounded-lg bg-rocket-accent-bright/10",
           collapsed ? "h-8 w-8" : "h-8 w-8"
         )}>
-          <Rocket className="h-4 w-4 shrink-0 text-rocket-accent" />
+          <Rocket className="h-4 w-4 shrink-0 text-rocket-accent-bright" />
         </div>
         {!collapsed && (
           <span className="truncate text-sm font-semibold text-rocket-dark">{brandName}</span>

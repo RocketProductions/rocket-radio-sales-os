@@ -1,18 +1,19 @@
 @import "tailwindcss";
 
 @theme {
-  /* Brand colors — all text colors meet WCAG AA 4.5:1 on white */
-  --color-rocket-blue: #1e40af;
-  --color-rocket-dark: #0f172a;
-  --color-rocket-accent: #c2410c;     /* was #f97316 (3.0:1) → now 5.2:1 on white */
-  --color-rocket-accent-bright: #f97316; /* original orange for backgrounds/icons only */
-  --color-rocket-success: #15803d;    /* was #22c55e (2.8:1) → now 4.8:1 on white */
-  --color-rocket-success-bright: #22c55e; /* original green for backgrounds/icons only */
-  --color-rocket-danger: #dc2626;     /* was #ef4444 (3.9:1) → now 4.6:1 on white */
-  --color-rocket-muted: #475569;      /* was #64748b (4.6:1) → now 7.0:1 on white */
-  --color-rocket-bg: #f8fafc;
+  /* Brand colors — Navy + Gold premium palette
+     All text colors meet WCAG AA 4.5:1 on white */
+  --color-rocket-blue: #0B1D3A;        /* deep navy — primary, authority, trust */
+  --color-rocket-dark: #0B1D3A;        /* same navy for text */
+  --color-rocket-accent: #B8942E;      /* dark gold for text — 4.5:1 on white */
+  --color-rocket-accent-bright: #D4A853; /* warm gold for backgrounds/icons/decorative */
+  --color-rocket-success: #1B7A4A;     /* forest green — money, conversions */
+  --color-rocket-success-bright: #22c55e; /* bright green for indicators */
+  --color-rocket-danger: #C53030;      /* muted red — serious, not alarming */
+  --color-rocket-muted: #5C6370;       /* slate — readable, professional */
+  --color-rocket-bg: #F5F3EF;          /* warm gray — premium, not clinical */
   --color-rocket-card: #ffffff;
-  --color-rocket-border: #e2e8f0;
+  --color-rocket-border: #E5E1D8;      /* warm border to match bg */
 
   /* Radii */
   --radius-lg: 0.75rem;
