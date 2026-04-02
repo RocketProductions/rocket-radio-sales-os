@@ -77,6 +77,52 @@ body {
   background: var(--color-rocket-muted);
 }
 
+/* Serif headline font */
+.font-serif {
+  font-family: var(--font-playfair), Georgia, serif;
+}
+
+/* Glassmorphism */
+.glass {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-gold {
+  background: linear-gradient(135deg, rgba(212, 168, 83, 0.15), rgba(212, 168, 83, 0.05));
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(212, 168, 83, 0.2);
+}
+
+/* Gold gradient text */
+.text-gradient-gold {
+  background: linear-gradient(135deg, #D4A853, #F5DEB3, #D4A853);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Background glow effects */
+.glow-gold {
+  position: relative;
+}
+.glow-gold::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(600px circle at 50% 40%, rgba(212, 168, 83, 0.08), transparent 70%);
+  pointer-events: none;
+}
+
+/* Dot grid pattern */
+.dot-grid {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
 /* Print utilities (existing) */
 @media print {
   .print\:hidden { display: none !important; }
