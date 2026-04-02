@@ -5,8 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LeadStatusBadge } from "@/components/leads/LeadStatusBadge";
 import { LeadStatusUpdater } from "@/components/leads/LeadStatusUpdater";
 import { PageHeader } from "@/components/ui/page-header";
+import { CampaignJourney, buildMilestones } from "@/components/portal/CampaignJourney";
 import {
-  UserCheck, Phone, CalendarCheck, TrendingUp, ChevronRight, Inbox, Activity,
+  UserCheck, Phone, CalendarCheck, TrendingUp, ChevronRight, Inbox,
   Rocket, Radio, Globe, Zap, ExternalLink,
 } from "lucide-react";
 
@@ -88,18 +89,18 @@ export default async function PortalPage() {
   const estimatedRevenue = (stats.booked + stats.closed) * avgTicket;
   const hasRoi = avgTicket > 0 && (stats.booked + stats.closed) > 0;
 
-  // Fetch campaign context for welcome state (when no leads yet)
-  let campaignContext: { businessName: string; lpUrl: string | null; scriptPreview: string | null } | null = null;
-  if (stats.total === 0 && tenantId) {
+  // Fetch campaign context — used for welcome state + journey tracker
+  let campaignContext: { businessName: string; lpUrl: string | null; scriptPreview: string | null; hasPixel: boolean; campaignActive: boolean; lpLive: boolean } | null = null;
+  if (tenantId) {
     const { data: sessions } = await supabase
       .from("campaign_sessions")
-      .select("session_id, business_name, lp_slug, lp_live")
+      .select("session_id, business_name, lp_slug, lp_live, brand_kit_id, status")
       .eq("tenant_id", tenantId)
       .order("created_at", { ascending: false })
       .limit(1);
 
     if (sessions && sessions.length > 0) {
-      const s = sessions[0] as { session_id: string; business_name: string; lp_slug: string | null; lp_live: boolean };
+      const s = sessions[0] as { session_id: string; business_name: string; lp_slug: string | null; lp_live: boolean; brand_kit_id: string | null; status: string };
       const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://rocketradiosales.com";
 
       // Fetch radio script if available
@@ -115,13 +116,42 @@ export default async function PortalPage() {
         script = content?.script?.slice(0, 200) ?? null;
       }
 
+      // Check if pixel is set
+      let hasPixel = false;
+      if (s.brand_kit_id) {
+        const { data: bk } = await supabase
+          .from("brand_kits")
+          .select("meta_pixel_id")
+          .eq("id", s.brand_kit_id)
+          .single();
+        hasPixel = !!(bk as { meta_pixel_id: string | null } | null)?.meta_pixel_id;
+      }
+
       campaignContext = {
         businessName: s.business_name,
         lpUrl: s.lp_live && s.lp_slug ? `${baseUrl}/lp/${s.lp_slug}` : null,
         scriptPreview: script,
+        hasPixel,
+        campaignActive: s.status === "active" || s.status === "published",
+        lpLive: !!s.lp_live,
       };
     }
   }
+
+  // Build journey milestones
+  const firstLead = leads.length > 0 ? leads[leads.length - 1] : null;
+  const milestones = campaignContext
+    ? buildMilestones({
+        campaignActive: campaignContext.campaignActive,
+        lpLive: campaignContext.lpLive,
+        lpUrl: campaignContext.lpUrl,
+        hasPixel: campaignContext.hasPixel,
+        totalLeads: stats.total,
+        firstLeadName: firstLead?.name ?? null,
+        bookedCount: stats.booked,
+        closedCount: stats.closed,
+      })
+    : null;
 
   const activityItems = leads.slice(0, 15).map((l) => ({
     id:        l.id,
@@ -141,7 +171,7 @@ export default async function PortalPage() {
       <PageHeader title="Your Leads" subtitle="Everything happening with your campaign leads." />
 
       {/* Welcome state — shown when campaign exists but no leads yet */}
-      {stats.total === 0 && campaignContext && (
+      {stats.total === 0 && campaignContext && campaignContext.campaignActive && (
         <Card className="relative overflow-hidden border-rocket-blue/20 bg-gradient-to-r from-rocket-blue/5 to-transparent animate-fade-in-up">
           <div className="absolute inset-y-0 left-0 w-1.5 bg-rocket-blue" />
           <CardContent className="py-6 pl-6 space-y-4">
@@ -301,41 +331,46 @@ export default async function PortalPage() {
           </CardContent>
         </Card>
 
-        {/* Activity Feed — narrower */}
-        <Card className="lg:col-span-2 animate-fade-in-up" style={{ animationDelay: "100ms" }}>
-          <CardHeader>
-            <CardTitle className="text-base font-semibold">Activity</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {activityItems.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-rocket-border/40">
-                  <Activity className="h-6 w-6 text-rocket-muted/60" />
+        {/* Right column — Journey + Activity */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Campaign Journey — always visible when campaign exists */}
+          {milestones && (
+            <Card className="animate-fade-in-up" style={{ animationDelay: "100ms" }}>
+              <CardHeader>
+                <CardTitle className="text-base font-semibold">Your Campaign Journey</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CampaignJourney milestones={milestones} />
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Activity Feed — shown when there are leads */}
+          {activityItems.length > 0 && (
+            <Card className="animate-fade-in-up" style={{ animationDelay: "200ms" }}>
+              <CardHeader>
+                <CardTitle className="text-base font-semibold">Recent Activity</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {activityItems.map((item) => (
+                    <div key={item.id} className="flex gap-3 text-sm">
+                      <div className="relative mt-1.5 flex flex-col items-center">
+                        <span className="h-2 w-2 rounded-full bg-rocket-blue ring-4 ring-rocket-blue/10" />
+                      </div>
+                      <div className="min-w-0 pb-3 border-b border-rocket-border/50 last:border-0 flex-1">
+                        <p className="text-sm text-rocket-dark leading-snug">{item.message}</p>
+                        <p className="mt-0.5 text-xs text-rocket-muted">
+                          {new Date(item.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <p className="text-sm font-medium text-rocket-dark">No activity yet</p>
-                <p className="mt-1 max-w-[200px] text-xs text-rocket-muted">
-                  Activity appears here as leads come in.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {activityItems.map((item) => (
-                  <div key={item.id} className="flex gap-3 text-sm">
-                    <div className="relative mt-1.5 flex flex-col items-center">
-                      <span className="h-2 w-2 rounded-full bg-rocket-blue ring-4 ring-rocket-blue/10" />
-                    </div>
-                    <div className="min-w-0 pb-3 border-b border-rocket-border/50 last:border-0 flex-1">
-                      <p className="text-sm text-rocket-dark leading-snug">{item.message}</p>
-                      <p className="mt-0.5 text-xs text-rocket-muted">
-                        {new Date(item.createdAt).toLocaleString()}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </div>
     </div>
   );
