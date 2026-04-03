@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { TopBar } from "@/components/layout/TopBar";
 import { ThemeProvider } from "@/components/ui/theme-provider";
+import { AssistantWidget } from "@/components/assistant/AssistantWidget";
 
 interface DashboardShellProps {
   userRole?: string;
@@ -61,6 +62,7 @@ export function DashboardShell({ userRole, brandName, children }: DashboardShell
         </main>
       </div>
     </div>
+    <AssistantWidget />
     </ThemeProvider>
   );
 }

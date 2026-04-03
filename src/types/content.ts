@@ -28,7 +28,7 @@ export interface User {
   email: string;
   name: string;
   tenantId: string;
-  role: "super_admin" | "admin" | "owner" | "manager" | "executive" | "client" | "client_owner";
+  role: "super_admin" | "admin" | "owner" | "manager" | "executive" | "rep" | "agency_admin" | "client" | "client_owner";
   passwordHash: string;
   createdAt: string;
 }

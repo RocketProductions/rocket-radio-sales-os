@@ -49,6 +49,81 @@ export async function askClaude(
  * Ask Claude and parse JSON response.
  * Strips markdown fences if present.
  */
+/* ── Types for multi-turn chat with tool use ─────────────────────────── */
+
+export interface ClaudeTool {
+  name: string;
+  description: string;
+  input_schema: Record<string, unknown>;
+}
+
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+/**
+ * Multi-turn chat with optional tool use.
+ * Returns the text response and any tool calls Claude wants to make.
+ */
+export async function chatWithClaude(opts: {
+  system: string;
+  messages: ChatMessage[];
+  tools?: ClaudeTool[];
+  maxTokens?: number;
+}): Promise<{
+  text: string;
+  toolCalls?: Array<{ name: string; input: Record<string, unknown> }>;
+}> {
+  const client = getClient();
+
+  // Build the messages.create() call with optional tools
+  const mappedMessages = opts.messages.map((m) => ({
+    role: m.role as "user" | "assistant",
+    content: m.content,
+  }));
+
+  const mappedTools = opts.tools?.length
+    ? opts.tools.map((t) => ({
+        name: t.name,
+        description: t.description,
+        input_schema: t.input_schema as Anthropic.Tool.InputSchema,
+      }))
+    : undefined;
+
+  const response = await client.messages.create({
+    model: "claude-sonnet-4-20250514",
+    max_tokens: opts.maxTokens ?? 4096,
+    temperature: 0.3,
+    system: opts.system,
+    messages: mappedMessages,
+    ...(mappedTools ? { tools: mappedTools } : {}),
+  });
+
+  let text = "";
+  const toolCalls: Array<{ name: string; input: Record<string, unknown> }> = [];
+
+  for (const block of response.content) {
+    if (block.type === "text") {
+      text += block.text;
+    } else if (block.type === "tool_use") {
+      toolCalls.push({
+        name: block.name,
+        input: block.input as Record<string, unknown>,
+      });
+    }
+  }
+
+  return {
+    text,
+    toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+  };
+}
+
+/**
+ * Ask Claude and parse JSON response.
+ * Strips markdown fences if present.
+ */
 export async function askClaudeJson<T = unknown>(
   system: string,
   message: string,

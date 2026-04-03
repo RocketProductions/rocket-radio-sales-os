@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 const TABS = [
   { href: "/dashboard/settings/connections",   label: "Social Connections" },
   { href: "/dashboard/settings/notifications", label: "Lead Notifications" },
+  { href: "/dashboard/settings/team",          label: "Team" },
 ];
 
 export default async function SettingsLayout({ children }: { children: React.ReactNode }) {

@@ -40,6 +40,8 @@ const PUBLIC_ROUTES = [
   "/api/agents",         // All agent endpoints (triage, outreach)
   // Webhook endpoints
   "/api/webhooks",       // Resend, SMS inbound
+  // Team invite acceptance — public
+  "/invite",             // /invite/[token] — accept invite page
 ];
 
 // Routes that require rep/admin/super_admin role
