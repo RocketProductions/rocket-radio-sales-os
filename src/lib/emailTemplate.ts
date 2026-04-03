@@ -37,7 +37,7 @@ export function emailWrapper(title: string, bodyHtml: string, footerText?: strin
         <!-- Footer -->
         <div style="text-align: center; padding: 20px 0 0;">
           <p style="margin: 0; font-size: 11px; color: ${MUTED};">
-            ${footerText ?? `Rocket Radio &middot; Powered by Federated Media &middot; Fort Wayne, Indiana`}
+            ${footerText ?? `<a href="https://rocketradiosales.com" style="color: ${MUTED}; text-decoration: none;">Powered by Rocket Radio Sales</a>`}
           </p>
         </div>
       </div>

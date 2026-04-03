@@ -402,8 +402,10 @@ export default async function ProposalDetailPage({ params }: Props) {
               <span className="flex items-center gap-2"><Mail className="h-3.5 w-3.5" /> strategy@federatedmedia.com</span>
             </div>
             <div className="mt-10 h-px bg-gradient-to-r from-transparent via-[#D4A853]/30 to-transparent" />
-            <p className="mt-6 text-xs text-white/30">
-              Powered by Federated Media &middot; 95.3 MNC &middot; Fort Wayne, Indiana
+            <p className="mt-6 text-[10px] text-white/20">
+              <a href="https://rocketradiosales.com" target="_blank" rel="noopener noreferrer" className="text-white/20 hover:text-white/40 transition-colors no-underline">
+                Powered by Rocket Radio Sales
+              </a>
             </p>
           </section>
         </ScrollReveal>

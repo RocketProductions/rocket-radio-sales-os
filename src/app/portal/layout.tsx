@@ -37,9 +37,14 @@ export default async function PortalLayout({ children }: { children: React.React
             </div>
             <div className="flex items-center gap-4">
               {!branding.hideRocketBranding && (
-                <span className="text-xs text-rocket-muted hidden sm:block">
-                  Powered by {branding.brandName}
-                </span>
+                <a
+                  href="https://rocketradiosales.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[10px] text-rocket-muted/60 hidden sm:block hover:text-rocket-muted transition-colors"
+                >
+                  Powered by Rocket Radio Sales
+                </a>
               )}
               <PortalSignOutButton />
             </div>
