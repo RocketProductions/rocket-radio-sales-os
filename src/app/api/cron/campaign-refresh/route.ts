@@ -41,7 +41,7 @@ export async function GET() {
     // 1. Find active campaigns older than 60 days
     const { data: staleCampaigns, error: campaignError } = await supabase
       .from("campaign_sessions")
-      .select("session_id, business_name, industry, tenant_id, created_at")
+      .select("session_id, business_name, intake_form, tenant_id, created_at")
       .eq("status", "active")
       .lte("created_at", sixtyDaysAgo.toISOString())
       .limit(20); // Fetch extra, we'll filter below
@@ -79,10 +79,10 @@ export async function GET() {
     }
 
     // 3. Generate refresh suggestions (cap at MAX_PER_RUN)
-    const toProcess = eligible.slice(0, MAX_PER_RUN) as {
+    const toProcess = eligible.slice(0, MAX_PER_RUN) as unknown as {
       session_id: string;
       business_name: string;
-      industry: string | null;
+      intake_form: Record<string, string> | null;
       tenant_id: string | null;
       created_at: string;
     }[];
@@ -99,7 +99,7 @@ export async function GET() {
       try {
         const suggestion = await askClaude(
           "You are a radio advertising campaign strategist. Suggest a creative refresh for a campaign that has been running unchanged. Consider seasonal relevance, fresh angles, and new offers. Be specific and actionable. Max 3 sentences.",
-          `Business: ${campaign.business_name}\nIndustry: ${campaign.industry ?? "local business"}\nCurrent season: ${season}\nDays active: ${daysActive}\n\nSuggest a campaign refresh that feels timely and fresh.`,
+          `Business: ${campaign.business_name}\nIndustry: ${(campaign.intake_form as Record<string, string> | null)?.industry ?? "local business"}\nCurrent season: ${season}\nDays active: ${daysActive}\n\nSuggest a campaign refresh that feels timely and fresh.`,
           { maxTokens: 256, temperature: 0.5 },
         );
 

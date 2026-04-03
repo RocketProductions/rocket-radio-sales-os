@@ -40,12 +40,12 @@ export async function GET() {
   const { data: eligibleEmails, error: queryError } = await supabase
     .from("outreach_emails")
     .select(`
-      id, prospect_id, tenant_id, subject, body, rep_name, sent_at,
+      id, prospect_id, rep_id, tenant_id, subject, body, sent_at,
       prospects ( business_name, contact_name, website, industry )
     `)
     .eq("status", "sent")
     .eq("sequence_step", 1)
-    .eq("replied", false)
+    .is("replied_at", null)
     .lte("sent_at", fiveDaysAgo.toISOString())
     .limit(MAX_PER_RUN);
 
@@ -72,7 +72,7 @@ export async function GET() {
       tenant_id: string | null;
       subject: string;
       body: string;
-      rep_name: string | null;
+      rep_id: string | null;
       sent_at: string;
       prospects: {
         business_name: string;
@@ -93,7 +93,7 @@ export async function GET() {
     if (existing && existing.length > 0) continue;
 
     const prospect = e.prospects?.[0] ?? null;
-    const repName = e.rep_name ?? "Chris";
+    const repName = "Chris"; // TODO: look up rep name from app_users via e.rep_id
 
     // 3. Generate follow-up via Claude
     try {
@@ -123,7 +123,7 @@ export async function GET() {
           body: followup.body,
           status: "draft",
           sequence_step: 2,
-          rep_name: repName,
+          rep_id: e.rep_id,
           parent_email_id: e.id,
         });
 

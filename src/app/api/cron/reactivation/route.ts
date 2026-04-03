@@ -32,7 +32,7 @@ export async function GET() {
     const { data: lostLeads, error: leadsError } = await supabase
       .from("lp_leads")
       .select(`
-        id, first_name, last_name, phone, created_at, landing_page_id,
+        id, name, phone, created_at, landing_page_id,
         landing_pages ( business_name )
       `)
       .eq("status", "lost")
@@ -84,8 +84,7 @@ export async function GET() {
     // 3. Generate reactivation drafts (cap at MAX_PER_RUN)
     const toProcess = eligible.slice(0, MAX_PER_RUN) as {
       id: string;
-      first_name: string | null;
-      last_name: string | null;
+      name: string | null;
       phone: string | null;
       created_at: string;
       landing_page_id: string;
@@ -98,7 +97,7 @@ export async function GET() {
     for (const lead of toProcess) {
       const businessName =
         (Array.isArray(lead.landing_pages) ? lead.landing_pages[0]?.business_name : null) ?? "your business";
-      const firstName = lead.first_name ?? "there";
+      const firstName = lead.name?.split(" ")[0] ?? "there";
 
       try {
         const message = await askClaude(
@@ -130,7 +129,7 @@ export async function GET() {
 
         draftsCreated++;
         draftSummaries.push({
-          name: `${firstName} ${lead.last_name ?? ""}`.trim(),
+          name: lead.name ?? firstName,
           business: businessName,
           message: trimmedMessage,
         });
